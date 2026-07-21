@@ -3,15 +3,13 @@
 // Body: { key: "TYFREX-DPD-XXXXX-XXXXX", app: "dpd-desktop" }
 
 const LICENSES = {
-  // Add operator keys here using generate_key.py
-  // Example:
-  // "TYFREX-DPD-XXXXX-XXXXX": {
-  //   operator: "Duke Logistics Ltd",
-  //   app: "dpd",
-  //   issued: "2026-07-16",
-  //   expiry: "2026-08-16",
-  //   active: true
-  // },
+  "TYFREX-TRIAL-FA0DO-UEH30": {
+    "operator": "Trial",
+    "app": "both",
+    "issued": "2026-07-17",
+    "expiry": "2026-08-16",
+    "active": true
+  },
 };
 
 const APP_MAP = {
