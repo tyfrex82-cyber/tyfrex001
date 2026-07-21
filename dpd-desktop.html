@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tyfrex DPD Desktop v135</title>
+<title>Tyfrex DPD Desktop v140</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -800,7 +800,7 @@ td.amount.gold { color: var(--gold); }
   <div class="topbar-logo">TX</div>
   <div>
     <div class="topbar-company" id="tb-company">—</div>
-    <div class="topbar-byline">Powered by Tyfrex · DPD Desktop v135</div>
+    <div class="topbar-byline">Powered by Tyfrex · DPD Desktop v140</div>
   </div>
   <div class="topbar-cycle" id="tb-cycle">No cycle loaded</div>
   <div class="topbar-actions">
@@ -823,17 +823,11 @@ td.amount.gold { color: var(--gold); }
   <div class="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Payroll</div>
-      <div class="nav-item" onclick="setView('summary')">
-        <span class="nav-icon">📊</span> P&L Summary
-      </div>
-      <div class="nav-item" onclick="setView('analysis')">
-        <span class="nav-icon">📈</span> P&L Analysis
-      </div>
       <div class="nav-item active" onclick="setView('payroll')">
         <span class="nav-icon">💷</span> Payroll
       </div>
       <div class="nav-item" onclick="setView('staff')">
-        <span class="nav-icon">👥</span> Staff
+        <span class="nav-icon">👥</span> Operational Support
       </div>
       <div class="nav-item" onclick="setView('othercosts')">
         <span class="nav-icon">🧾</span> Operating Costs
@@ -844,11 +838,17 @@ td.amount.gold { color: var(--gold); }
       <div class="nav-item" onclick="setView('routes')">
         <span class="nav-icon">🗺️</span> Routes
       </div>
-      <div class="nav-item" onclick="setView('settings')">
-        <span class="nav-icon">⚙️</span> Settings
+      <div class="nav-item" onclick="setView('summary')">
+        <span class="nav-icon">📊</span> P&L Summary
       </div>
       <div class="nav-item" onclick="setView('pastcycles')">
         <span class="nav-icon">🗄️</span> Past Cycles
+      </div>
+      <div class="nav-item" onclick="setView('analysis')">
+        <span class="nav-icon">📈</span> P&L Analysis
+      </div>
+      <div class="nav-item" onclick="setView('settings')">
+        <span class="nav-icon">⚙️</span> Settings
       </div>
     </div>
 
@@ -975,7 +975,7 @@ td.amount.gold { color: var(--gold); }
       <!-- Staff on Payroll -->
       <div id="payroll-staff-section" style="border-top:1px solid var(--bdr);padding:16px 20px;background:var(--surf1)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Staff Payroll</div>
+          <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Operational Support</div>
           <div id="payroll-staff-total" style="font-size:13px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--red)"></div>
         </div>
         <div id="payroll-staff-list"></div>
@@ -5924,21 +5924,19 @@ function generateDesktopPaySlip(d, previewOnly) {
 
 function showPayslipPreview(pdfUrl, driverName, onSend) {
   var overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(7,9,15,.85);backdrop-filter:blur(8px);z-index:2000;display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = '<div style="background:#161B22;border:1px solid rgba(255,255,255,.1);border-radius:16px;width:min(900px,94vw);height:94vh;display:flex;flex-direction:column;overflow:hidden">'
-    +'<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'
-    +'<div style="font-size:16px;font-weight:700">Pay Summary Preview — '+driverName+'</div>'
+  overlay.style.cssText = 'position:fixed;inset:0;background:#0D1117;z-index:2000;display:flex;flex-direction:column;overflow:hidden;';
+  overlay.innerHTML = '<div style="padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#161B22">'
+    +'<div style="font-size:16px;font-weight:700;color:#E6EDF3">Pay Summary — '+driverName+'</div>'
     +'<div style="display:flex;gap:10px">'
     +'<button id="ps-send-btn" style="padding:9px 18px;background:linear-gradient(135deg,#F0B429,#C8922A);border:none;border-radius:8px;color:#05080F;font-size:14px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">💬 Send via WhatsApp</button>'
     +'<button id="ps-close-btn" style="padding:9px 18px;background:#21262D;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#E6EDF3;font-size:14px;font-weight:600;cursor:pointer;font-family:DM Sans,sans-serif">✕ Close</button>'
     +'</div></div>'
-    +'<div style="flex:1;overflow:auto;padding:16px;display:flex;justify-content:center">'
-    +'<iframe src="'+pdfUrl+'" style="width:100%;height:100%;border:none;border-radius:8px;background:#fff"></iframe>'
-    +'</div></div>';
+    +'<div style="flex:1;overflow:auto;display:flex;justify-content:center;background:#fff">'
+    +'<iframe src="'+pdfUrl+'" style="width:100%;max-width:900px;height:100%;border:none;background:#fff"></iframe>'
+    +'</div>';
   document.body.appendChild(overlay);
   overlay.querySelector('#ps-send-btn').onclick = function(){ onSend(); document.body.removeChild(overlay); };
   overlay.querySelector('#ps-close-btn').onclick = function(){ document.body.removeChild(overlay); };
-  overlay.onclick = function(e){ if(e.target===overlay) document.body.removeChild(overlay); };
 }
 
 function sendAllPayslips() {
@@ -6527,7 +6525,7 @@ function renderPayrollStaff() {
   // Always show the section — operators need to know staff payroll exists
   if (section) section.style.display = '';
   if (!staff.length) {
-    listEl.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0">No staff added yet — <a href="#" onclick="setView(\'staff\');return false;" style="color:var(--gold)">go to Staff</a> to add helpers, managers or office staff.</div>';
+    listEl.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0">No staff added yet — <a href="#" onclick="setView(\'staff\');return false;" style="color:var(--gold)">go to Operational Support</a> to add helpers, managers or office staff.</div>';
     if (totalEl) totalEl.textContent = '';
     return;
   }
@@ -6704,7 +6702,7 @@ function buildStaffView() {
 
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">';
   html += '<h2 style="font-family:Syne,sans-serif;font-size:22px;font-weight:800">Staff</h2>';
-  html += '<button onclick="openAddStaff(null)" style="padding:9px 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:8px;color:#05080F;font-size:13px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">+ Add Staff Member</button>';
+  html += '<button onclick="openAddStaff(null)" style="padding:9px 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:8px;color:#05080F;font-size:13px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">+ Add Person</button>';
   html += '</div>';
 
   if (!staff.length) {

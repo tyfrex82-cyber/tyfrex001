@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tyfrex Yodel Desktop v71</title>
+<title>Tyfrex Yodel Desktop v79</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -758,7 +758,7 @@ td.amount.gold { color: var(--gold); }
   <div class="topbar-logo">TX</div>
   <div>
     <div class="topbar-company" id="tb-company">—</div>
-    <div class="topbar-byline">Powered by Tyfrex · Yodel Desktop v71</div>
+    <div class="topbar-byline">Powered by Tyfrex · Yodel Desktop v79</div>
   </div>
   <div class="topbar-cycle" id="tb-cycle">No cycle loaded</div>
   <div class="topbar-actions">
@@ -783,16 +783,16 @@ td.amount.gold { color: var(--gold); }
         <span class="nav-icon">💷</span> Payroll
       </div>
       <div class="nav-item" onclick="setView('staff')">
-        <span class="nav-icon">👥</span> Staff
+        <span class="nav-icon">👥</span> Operational Support
       </div>
       <div class="nav-item" onclick="setView('othercosts')">
         <span class="nav-icon">🧾</span> Operating Costs
       </div>
-      <div class="nav-item" onclick="setView('pastcycles')">
-        <span class="nav-icon">🗂</span> Past Cycles
-      </div>
       <div class="nav-item" onclick="setView('summary')">
         <span class="nav-icon">📊</span> P&L Summary
+      </div>
+      <div class="nav-item" onclick="setView('pastcycles')">
+        <span class="nav-icon">🗂</span> Past Cycles
       </div>
       <div class="nav-item" onclick="setView('analysis')">
         <span class="nav-icon">📈</span> P&L Analysis
@@ -929,7 +929,7 @@ td.amount.gold { color: var(--gold); }
       <!-- Staff on Payroll -->
       <div id="payroll-staff-section" style="border-top:1px solid var(--bdr);padding:16px 20px;background:var(--surf1)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Staff Payroll</div>
+          <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Operational Support</div>
           <div id="payroll-staff-total" style="font-size:13px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--red)"></div>
         </div>
         <div id="payroll-staff-list"></div>
@@ -2769,14 +2769,24 @@ function removeTop(id, i) {
 // tyfrex:yodel:* storage keys, amount||dpd_total for income.
 
 function parseUkDateFromLabel(label) {
-  // Extracts the FIRST date in a "DD/MM/YYYY – DD/MM/YYYY" label as a
-  // sortable timestamp, used to keep the archive index in chronological
-  // order regardless of which order cycles were archived in.
-  var m = (label||'').match(/^(\d{2})\/(\d{2})\/(\d{2,4})/);
-  if (!m) return 0;
-  var day = parseInt(m[1]), month = parseInt(m[2]), year = parseInt(m[3]);
-  if (year < 100) year += 2000;
-  return new Date(year, month-1, day).getTime();
+  // Handles both DD/MM/YYYY (DPD) and DD Mon YY (Yodel: "05 Apr 26") formats
+  var MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  var label2 = (label||'');
+  // Try DD/MM/YYYY
+  var m1 = label2.match(/^(\d{2})\/(\d{2})\/(\d{2,4})/);
+  if (m1) {
+    var day=parseInt(m1[1]), month=parseInt(m1[2]), year=parseInt(m1[3]);
+    if (year < 100) year += 2000;
+    return new Date(year, month-1, day).getTime();
+  }
+  // Try DD Mon YY (Yodel format)
+  var m2 = label2.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{2,4})/);
+  if (m2) {
+    var day2=parseInt(m2[1]), month2=MONTHS[(m2[2]||'').toLowerCase()]||1, year2=parseInt(m2[3]);
+    if (year2 < 100) year2 += 2000;
+    return new Date(year2, month2-1, day2).getTime();
+  }
+  return 0;
 }
 
 function startHistoricalMode() {
@@ -3008,14 +3018,24 @@ function buildPastCyclesView() {
   // workbook per tax year is far more useful than a pile of separate
   // per-cycle files the accountant would otherwise have to sort and merge
   // themselves.
+  var MONTH_MAP = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
   var taxYearMap = {};
   idx.forEach(function(entry){
-    var m = entry.label.match(/^(\d{2})\/(\d{2})\/(\d{2,4})/);
-    if (!m) return;
-    var day = parseInt(m[1]), month = parseInt(m[2]), year = parseInt(m[3]);
-    if (year < 100) year += 2000;
-    // UK tax year runs 6 Apr to 5 Apr — a cycle starting before 6 Apr belongs
-    // to the tax year that began the previous 6 Apr.
+    var day, month, year;
+    // Try DD/MM/YYYY format (DPD)
+    var m1 = entry.label.match(/^(\d{2})\/(\d{2})\/(\d{2,4})/);
+    // Try DD Mon YY format (Yodel: "05 Apr 26")
+    var m2 = entry.label.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{2,4})/);
+    if (m1) {
+      day = parseInt(m1[1]); month = parseInt(m1[2]); year = parseInt(m1[3]);
+      if (year < 100) year += 2000;
+    } else if (m2) {
+      day = parseInt(m2[1]);
+      month = MONTH_MAP[(m2[2]||'').toLowerCase().slice(0,3)] || 1;
+      year = parseInt(m2[3]);
+      if (year < 100) year += 2000;
+    } else { return; }
+    // UK tax year runs 6 Apr to 5 Apr
     var taxYearStart = (month > 4 || (month === 4 && day >= 6)) ? year : year - 1;
     var tyLabel = taxYearStart + '/' + String(taxYearStart+1).slice(-2);
     (taxYearMap[tyLabel] = taxYearMap[tyLabel] || []).push(entry.id);
@@ -3093,6 +3113,11 @@ function updateCompareButton() {
     btn.style.background = 'var(--surf3)';
     btn.style.border = '1px solid var(--bdr2)';
   }
+}
+
+function calcCDFeeTotal(src) {
+  // Yodel has no CD App fee — DPD-only concept, return 0
+  return 0;
 }
 
 function getCycleComparisonMetrics(archivedSrcOrLive, staffList) {
@@ -4832,21 +4857,19 @@ function generateDesktopPaySlip(d, previewOnly) {
 
 function showPayslipPreview(pdfUrl, driverName, onSend) {
   var overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(7,9,15,.85);backdrop-filter:blur(8px);z-index:2000;display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = '<div style="background:#161B22;border:1px solid rgba(255,255,255,.1);border-radius:16px;width:min(900px,94vw);height:94vh;display:flex;flex-direction:column;overflow:hidden">'
-    +'<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'
-    +'<div style="font-size:16px;font-weight:700">Pay Summary Preview — '+driverName+'</div>'
+  overlay.style.cssText = 'position:fixed;inset:0;background:#0D1117;z-index:2000;display:flex;flex-direction:column;overflow:hidden;';
+  overlay.innerHTML = '<div style="padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#161B22">'
+    +'<div style="font-size:16px;font-weight:700;color:#E6EDF3">Pay Summary — '+driverName+'</div>'
     +'<div style="display:flex;gap:10px">'
     +'<button id="ps-send-btn" style="padding:9px 18px;background:linear-gradient(135deg,#F0B429,#C8922A);border:none;border-radius:8px;color:#05080F;font-size:14px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">💬 Send via WhatsApp</button>'
     +'<button id="ps-close-btn" style="padding:9px 18px;background:#21262D;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#E6EDF3;font-size:14px;font-weight:600;cursor:pointer;font-family:DM Sans,sans-serif">✕ Close</button>'
     +'</div></div>'
-    +'<div style="flex:1;overflow:auto;padding:16px;display:flex;justify-content:center">'
-    +'<iframe src="'+pdfUrl+'" style="width:100%;height:100%;border:none;border-radius:8px;background:#fff"></iframe>'
-    +'</div></div>';
+    +'<div style="flex:1;overflow:auto;display:flex;justify-content:center;background:#fff">'
+    +'<iframe src="'+pdfUrl+'" style="width:100%;max-width:900px;height:100%;border:none;background:#fff"></iframe>'
+    +'</div>';
   document.body.appendChild(overlay);
   overlay.querySelector('#ps-send-btn').onclick = function(){ onSend(); document.body.removeChild(overlay); };
   overlay.querySelector('#ps-close-btn').onclick = function(){ document.body.removeChild(overlay); };
-  overlay.onclick = function(e){ if(e.target===overlay) document.body.removeChild(overlay); };
 }
 
 function sendAllPayslips() {
@@ -5297,7 +5320,7 @@ function renderPayrollStaff() {
   // Always show the section — operators need to know staff payroll exists
   if (section) section.style.display = '';
   if (!staff.length) {
-    listEl.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0">No staff added yet — <a href="#" onclick="setView(\'staff\');return false;" style="color:var(--gold)">go to Staff</a> to add helpers, managers or office staff.</div>';
+    listEl.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0">No staff added yet — <a href="#" onclick="setView(\'staff\');return false;" style="color:var(--gold)">go to Operational Support</a> to add helpers, managers or office staff.</div>';
     if (totalEl) totalEl.textContent = '';
     return;
   }
@@ -5370,7 +5393,7 @@ function buildStaffView() {
 
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">';
   html += '<h2 style="font-family:Syne,sans-serif;font-size:22px;font-weight:800">Staff</h2>';
-  html += '<button onclick="openAddStaff(null)" style="padding:9px 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:8px;color:#05080F;font-size:13px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">+ Add Staff Member</button>';
+  html += '<button onclick="openAddStaff(null)" style="padding:9px 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:8px;color:#05080F;font-size:13px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">+ Add Person</button>';
   html += '</div>';
 
   if (!staff.length) {
@@ -5980,7 +6003,6 @@ window.YodelPlugin = (function() {
           function nextPage() {
             if (page > numPages) {
               // Log for debugging
-              console.log('[YodelPlugin v2] Extracted', allText.split('\n').length, 'lines from', numPages, 'pages');
               var invoice;
               try {
                 invoice = parseInvoice(allText);
@@ -5989,10 +6011,6 @@ window.YodelPlugin = (function() {
                 callback(null, 'Parse error: ' + ex.message);
                 return;
               }
-              console.log('[YodelPlugin v2] week_summary ops:', Object.keys(invoice.week_summary));
-              console.log('[YodelPlugin v2] daily records:', invoice.daily.length);
-              console.log('[YodelPlugin v2] manual_adjustments:', JSON.stringify(invoice.manual_adjustments));
-              console.log('[YodelPlugin v2] adj_by_op:', JSON.stringify(invoice.adj_by_op));
               callback(invoice, null);
               return;
             }

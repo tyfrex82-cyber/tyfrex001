@@ -473,7 +473,7 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
 <div class="sheet" id="add-staff-sheet">
   <div class="sheet-handle"></div>
   <div style="padding:0 20px 24px">
-    <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:20px;font-family:Syne,sans-serif">Add Staff Member</div>
+    <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:20px;font-family:Syne,sans-serif">Add Operational Support</div>
     <div class="inp-lbl">Name</div>
     <input id="staff-name-inp" class="inp" type="text" placeholder="e.g. John Smith" autocomplete="off">
     <div class="inp-lbl" style="margin-top:13px">Role</div>
@@ -798,8 +798,8 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
       <!-- Staff payroll section -->
       <div id="staff-payroll-section" style="padding:0 14px 14px;margin-top:4px">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 8px">
-          <div style="font-size:13px;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;font-family:DM Mono,monospace">Staff This Cycle</div>
-          <button onclick="showAddStaffSheet()" style="background:var(--surf2);border:1px solid var(--bdr2);color:var(--gold);font-size:13px;font-weight:600;padding:6px 13px;border-radius:10px;cursor:pointer">+ Add Staff</button>
+          <div style="font-size:13px;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;font-family:DM Mono,monospace">Operational Support</div>
+          <button onclick="showAddStaffSheet()" style="background:var(--surf2);border:1px solid var(--bdr2);color:var(--gold);font-size:13px;font-weight:600;padding:6px 13px;border-radius:10px;cursor:pointer">+ Add Person</button>
         </div>
         <div id="staff-list"></div>
       </div>
@@ -4296,7 +4296,7 @@ function saveStaffMember() {
   closeAllSheets();
   buildStaffList();
   buildMoney();
-  showToast("Staff member saved ✅");
+  showToast("Person saved ✅");
 }
 
 function deleteStaffMember(id) {
@@ -4306,7 +4306,7 @@ function deleteStaffMember(id) {
       saveStaffData(staff);
       buildStaffList();
       buildMoney();
-      showToast("Staff member removed");
+      showToast("Person removed");
     });
 }
 
@@ -4315,7 +4315,7 @@ function buildStaffList() {
   if (!el) return;
   var staff = loadStaff();
   if (!staff.length) {
-    el.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0;text-align:center">No staff this cycle — tap + Add Staff to add helpers, loaders or managers</div>';
+    el.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0;text-align:center">No staff this cycle — tap + Add Person to add helpers, loaders or managers</div>';
     return;
   }
   el.innerHTML = '<div style="background:var(--surf);border-radius:var(--r);overflow:hidden">'
