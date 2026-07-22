@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tyfrex DPD Desktop v140</title>
+<title>Tyfrex DPD Desktop v148</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -597,6 +597,65 @@ td.amount.gold { color: var(--gold); }
     font-size: 11px;
   }
 }
+
+/* ── TOOLTIP SYSTEM ─────────────────────────────────────────────────────── */
+.tx-tip { position:relative; display:inline-flex; align-items:center; }
+.tx-tip-icon {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:16px; height:16px; border-radius:50%;
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+  color:var(--t3); font-size:10px; font-weight:700; cursor:help;
+  margin-left:5px; flex-shrink:0; font-family:IBM Plex Mono,monospace;
+  transition:all .15s;
+}
+.tx-tip-icon:hover { background:rgba(240,180,41,.2); border-color:var(--gold); color:var(--gold); }
+.tx-tip-bubble {
+  display:none; position:absolute; bottom:calc(100% + 8px); left:50%;
+  transform:translateX(-50%); width:240px; padding:10px 12px;
+  background:#1C2128; border:1px solid rgba(255,255,255,.15);
+  border-radius:10px; font-size:12px; color:var(--t2); line-height:1.5;
+  z-index:9999; pointer-events:none; text-align:left; font-weight:400;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.tx-tip-bubble::after {
+  content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+  border:5px solid transparent; border-top-color:#1C2128;
+}
+.tx-tip-icon:hover + .tx-tip-bubble,
+.tx-tip-icon:focus + .tx-tip-bubble { display:block; }
+
+/* ── HELP PANEL ──────────────────────────────────────────────────────────── */
+#help-panel {
+  position:fixed; top:0; right:-380px; width:360px; height:100vh;
+  background:#161B22; border-left:1px solid var(--bdr);
+  z-index:5000; display:flex; flex-direction:column;
+  transition:right .25s cubic-bezier(.4,0,.2,1);
+  box-shadow:-8px 0 32px rgba(0,0,0,.4);
+}
+#help-panel.open { right:0; }
+#help-panel-overlay {
+  display:none; position:fixed; inset:0; z-index:4999;
+  background:rgba(0,0,0,.4);
+}
+#help-panel-overlay.open { display:block; }
+
+/* ── CONFIRM MODAL ───────────────────────────────────────────────────────── */
+#tx-confirm-overlay {
+  display:none;position:fixed;inset:0;background:rgba(7,9,15,.85);
+  backdrop-filter:blur(6px);z-index:9000;align-items:center;justify-content:center;
+}
+#tx-confirm-overlay.open { display:flex; }
+#tx-confirm-box {
+  background:#161B22;border:1px solid rgba(255,255,255,.12);border-radius:16px;
+  padding:32px;width:min(420px,90vw);text-align:center;
+  box-shadow:0 24px 64px rgba(0,0,0,.5);
+}
+#tx-confirm-icon { font-size:32px;margin-bottom:12px; }
+#tx-confirm-title { font-size:17px;font-weight:700;color:var(--t1);margin-bottom:8px;font-family:Syne,sans-serif; }
+#tx-confirm-msg { font-size:13px;color:var(--t3);line-height:1.6;margin-bottom:24px; }
+#tx-confirm-btns { display:flex;gap:10px;justify-content:center; }
+#tx-confirm-ok { padding:11px 28px;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif; }
+#tx-confirm-cancel { padding:11px 28px;background:var(--surf3);border:1px solid var(--bdr2);border-radius:9px;color:var(--t2);font-size:14px;font-weight:600;cursor:pointer;font-family:DM Sans,sans-serif; }
 </style>
 <script>
 // Redirect phones to the mobile app — desktop layout doesn't work on small screens
@@ -619,14 +678,15 @@ td.amount.gold { color: var(--gold); }
   <div style="background:#161B22;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:40px;width:min(460px,94vw);text-align:center;">
     <div style="font-size:32px;font-weight:900;font-family:Syne,sans-serif;color:#F0B429;margin-bottom:4px">TX</div>
     <div style="font-size:22px;font-weight:800;font-family:Syne,sans-serif;color:#E6EDF3;margin-bottom:6px">Tyfrex DPD</div>
-    <div style="font-size:13px;color:#8B949E;margin-bottom:28px">Payroll software for DPD operators</div>
+    <div style="font-size:13px;color:#8B949E;margin-bottom:4px">Payroll software for DPD operators</div>
+    <div style="font-size:12px;color:#F0B429;font-weight:600;margin-bottom:24px;font-family:IBM Plex Mono,monospace">Your business. Your payroll. Your device.</div>
 
     <div id="licence-msg" style="font-size:13px;color:#8B949E;margin-bottom:20px;line-height:1.6">
       Enter your licence key to activate Tyfrex.<br>
       Don't have a key? Email <a href="mailto:hello@tyfrex.com" style="color:#F0B429">hello@tyfrex.com</a>
     </div>
 
-    <input id="licence-key-input" type="text" placeholder="TYFREX-DPD-XXXXX-XXXXX"
+    <input id="licence-key-input" aria-label="Licence key" type="text" placeholder="TYFREX-DPD-XXXXX-XXXXX"
       style="width:100%;box-sizing:border-box;padding:13px 16px;background:#21262D;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#E6EDF3;font-size:14px;font-family:IBM Plex Mono,monospace;outline:none;text-align:center;letter-spacing:.05em;margin-bottom:14px"
       oninput="this.value=this.value.toUpperCase()"
       onkeydown="if(event.key==='Enter')activateLicence()">
@@ -800,21 +860,22 @@ td.amount.gold { color: var(--gold); }
   <div class="topbar-logo">TX</div>
   <div>
     <div class="topbar-company" id="tb-company">—</div>
-    <div class="topbar-byline">Powered by Tyfrex · DPD Desktop v140</div>
+    <div class="topbar-byline">Powered by Tyfrex · DPD &nbsp;·&nbsp; Your business. Your payroll. Your device.</div>
   </div>
   <div class="topbar-cycle" id="tb-cycle">No cycle loaded</div>
-  <div class="topbar-actions">
-    <button class="tb-btn" onclick="triggerUpload()" title="Upload DPD CSV files">📂 Upload CSVs</button>
+  <div class="topbar-actions" role="toolbar" aria-label="Payroll actions">
+    <button class="tb-btn" onclick="triggerUpload()" title="Upload DPD CSV files" aria-label="Upload DPD CSV files">📂 Upload CSVs</button>
     <button class="tb-btn" onclick="showAdjustmentsPanel()" title="DPD Topups &amp; Deductions from Driver Portal">📋 DPD Adjustments</button>
-    <button id="btn-mark-paid" class="tb-btn primary" onclick="markAllPaid()" title="Mark all drivers as paid">💰 Mark All Paid</button>
-    <button class="tb-btn" onclick="sendAllPayslips();_recordsDownloaded.payslips=true;" title="Download all pay summaries as ZIP">📦 Download All Pay Summaries</button>
     <button class="tb-btn" onclick="exportXLSX();_recordsDownloaded.xlsx=true;" title="Export payroll spreadsheet">📊 Download Excel</button>
-    <button class="tb-btn danger" onclick="newCycle()" title="Start new payroll cycle">🔄 New Cycle</button>
+    <button class="tb-btn" onclick="sendAllPayslips();_recordsDownloaded.payslips=true;" title="Download all pay summaries as ZIP">📦 Download All Pay Summaries</button>
+    <button id="btn-mark-paid" class="tb-btn primary" onclick="markAllPaid()" title="Mark all drivers as paid — download Excel and payslips first">💰 Mark All Paid</button>
+    <button class="tb-btn danger" onclick="newCycle()" title="Start new payroll cycle — mark all paid first" aria-label="Start new payroll cycle">🔄 New Cycle</button>
   </div>
 </div>
 
 
-<input type="file" id="csv-file" accept=".csv,.xlsx,.xls" multiple style="display:none" onchange="handleUpload(this)">
+<button onclick="openHelp()" style="padding:7px 12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;font-family:DM Sans,sans-serif" title="Help" aria-label="Open help panel">? Help</button>
+      <input type="file" id="csv-file" accept=".csv,.xlsx,.xls" multiple style="display:none" onchange="handleUpload(this)">
 
 <!-- Main -->
 <div class="main">
@@ -827,7 +888,7 @@ td.amount.gold { color: var(--gold); }
         <span class="nav-icon">💷</span> Payroll
       </div>
       <div class="nav-item" onclick="setView('staff')">
-        <span class="nav-icon">👥</span> Operational Support
+        <span class="nav-icon">👥</span> Operation Support
       </div>
       <div class="nav-item" onclick="setView('othercosts')">
         <span class="nav-icon">🧾</span> Operating Costs
@@ -887,7 +948,7 @@ td.amount.gold { color: var(--gold); }
           <span id="sb-pl-fleet" style="font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--t2)">£0.00</span>
         </div>
         <div id="sb-staff-row" style="display:none;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid var(--bdr)">
-          <span style="font-size:11px;color:var(--t2)">↓ Staff Costs</span>
+          <span style="font-size:11px;color:var(--t2)">↓ Operation Support</span>
           <span id="sb-pl-staff" style="font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--red)">£0.00</span>
         </div>
         <div id="sb-vat-row" style="display:none;padding:7px 12px;background:rgba(240,180,41,.04)">
@@ -929,7 +990,7 @@ td.amount.gold { color: var(--gold); }
     <!-- Driver Table Panel -->
     <div class="table-panel" id="view-payroll">
       <div class="table-toolbar">
-        <input class="search-box" id="search-input" type="text" placeholder="Search drivers..."
+        <input class="search-box" id="search-input" type="text" placeholder="Search drivers..." aria-label="Search drivers"
           oninput="filterTable(this.value)">
         <button class="filter-btn active" id="filter-all" onclick="setFilter('all')">All</button>
         <button class="filter-btn" id="filter-pending" onclick="setFilter('pending')">Pending</button>
@@ -975,7 +1036,7 @@ td.amount.gold { color: var(--gold); }
       <!-- Staff on Payroll -->
       <div id="payroll-staff-section" style="border-top:1px solid var(--bdr);padding:16px 20px;background:var(--surf1)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Operational Support</div>
+          <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em">Operation Support</div>
           <div id="payroll-staff-total" style="font-size:13px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--red)"></div>
         </div>
         <div id="payroll-staff-list"></div>
@@ -1285,8 +1346,9 @@ async function doLogin() {
   }
 }
 
-function resetAppData() {
-  if (!confirm('This will clear ALL your data and settings. Are you sure?')) return;
+async function resetAppData() {
+  var _cont = await txConfirm('This will permanently delete all your drivers, settings and archived cycles. This cannot be undone.', {icon:'🗑️',title:'Clear All Data?',okText:'Yes, clear everything',danger:true});
+  if (!_cont) return;
   try {
     Object.values(SK).forEach(function(k){ localStorage.removeItem(k); });
   } catch(e) {}
@@ -1641,6 +1703,60 @@ function setupRestoreDropZone() {
   });
 }
 
+
+// ── HELP PANEL ────────────────────────────────────────────────────────────────
+function openHelp() {
+  document.getElementById('help-panel').classList.add('open');
+  document.getElementById('help-panel-overlay').classList.add('open');
+}
+function closeHelp() {
+  document.getElementById('help-panel').classList.remove('open');
+  document.getElementById('help-panel-overlay').classList.remove('open');
+}
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeHelp();
+});
+
+
+// ── STYLED CONFIRM MODAL ──────────────────────────────────────────────────────
+var _txConfirmCallback = null;
+
+function txConfirm(msg, opts) {
+  opts = opts || {};
+  var icon     = opts.icon     || '⚠️';
+  var title    = opts.title    || 'Are you sure?';
+  var okText   = opts.okText   || 'Confirm';
+  var okColor  = opts.danger   ? 'linear-gradient(135deg,#da3633,#b91c1c)' : 'linear-gradient(135deg,#F0B429,#C8922A)';
+  var okTextColor = opts.danger ? '#fff' : '#05080F';
+
+  document.getElementById('tx-confirm-icon').textContent  = icon;
+  document.getElementById('tx-confirm-title').textContent = title;
+  document.getElementById('tx-confirm-msg').textContent   = msg;
+  document.getElementById('tx-confirm-ok').textContent    = okText;
+  document.getElementById('tx-confirm-ok').style.background   = okColor;
+  document.getElementById('tx-confirm-ok').style.color        = okTextColor;
+
+  document.getElementById('tx-confirm-overlay').classList.add('open');
+  document.getElementById('tx-confirm-ok').focus();
+
+  return new Promise(function(resolve) {
+    _txConfirmCallback = resolve;
+  });
+}
+
+function txConfirmResolve(result) {
+  document.getElementById('tx-confirm-overlay').classList.remove('open');
+  if (_txConfirmCallback) { _txConfirmCallback(result); _txConfirmCallback = null; }
+}
+
+// Close on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('tx-confirm-overlay').classList.contains('open')) {
+    txConfirmResolve(false);
+  }
+});
+
 function init() {
   setupRestoreDropZone();  // enable drag-drop .tyfrex restore anywhere on page
   var co = '';
@@ -1823,7 +1939,7 @@ function handleUpload(input) {
 }
 
 function applyRows(rows, fileCount) {
-  if (!rows.length) { showToast('❌ Could not read files — check they are DPD CSV format'); return; }
+  if (!rows.length) { showToast('❌ File not recognised — expected a DPD CSV with columns: Date, Driver, Stops, Total. Download from the DPD Franchise Portal.'); return; }
 
   // Group by driver
   var driverMap = {};
@@ -2444,6 +2560,13 @@ function getFilteredDrivers() {
 }
 
 function renderTable() {
+  // Reset Mark All Paid button state when table re-renders
+  var btn = document.getElementById('btn-mark-paid');
+  if (btn && btn.disabled) {
+    btn.textContent = '💰 Mark All Paid';
+    btn.disabled = false;
+    btn.style.opacity = '';
+  }
   var drivers = getFilteredDrivers();
   var empty = document.getElementById('table-empty');
   var table = document.getElementById('driver-table');
@@ -2591,6 +2714,19 @@ function selectDriver(id) {
   document.getElementById('d-avatar').textContent = initials(d.name||d.id);
   document.getElementById('d-name').textContent = d.name || d.id;
   var fd = (d.fd_numbers&&d.fd_numbers.length) ? d.fd_numbers.join(', ') : (d.fd||d.id||'');
+
+  // Tax year — UK tax year runs 6 Apr to 5 Apr
+  var taxYear = (function() {
+    var startDate = recs.length ? new Date((recs[recs.length-1].date||'').split(' ')[0]) : now;
+    var y1 = startDate.getFullYear();
+    var m = startDate.getMonth()+1, day = startDate.getDate();
+    // Before 6 April = previous tax year
+    if (m < 4 || (m === 4 && day < 6)) y1 = y1 - 1;
+    return y1 + '/' + String(y1+1).slice(-2);
+  })();
+
+  // Payment date = issue date (payslip generated when operator pays)
+  var paymentDate = issueDate;
   var dayLabel = (PAYROLL_FROM||PAYROLL_TO) ? Math.round(d.days||0)+' days (filtered)' : Math.round(d.days||0)+' days';
   document.getElementById('d-sub').textContent = fd + ' · ' + dayLabel;
 
@@ -2621,7 +2757,7 @@ function selectDriver(id) {
     // normal per-stop rate, so this never overrides a genuine full route.
     html += '<div class="detail-row" style="flex-direction:column;align-items:stretch;gap:8px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center">'
-      +'<span class="lbl">Clear-up Supplement <span style="font-size:11px;color:var(--t3)">(below stop threshold only)</span></span>'
+      +'<span class="lbl">Clear-up Supplement <span class="tx-tip-icon" tabindex="0">?</span><span class="tx-tip-bubble">A fixed payment for low-stop days below your threshold. DPD sometimes calls this a clear-up payment. Set the threshold and amount per driver.</span><span style="font-size:11px;color:var(--t3)">(below stop threshold only)</span></span>'
       +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer">'
       +'<input type="checkbox" data-did="'+d.id+'" '+(d.day_rate_enabled?'checked':'')+' onchange="toggleDayRateDesktop(this.dataset.did,this.checked)" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">'
       +'<span style="font-size:12px;color:var(--t2)">Enable</span>'
@@ -2824,14 +2960,18 @@ function togglePaid(id) {
   if (allDriversPaid) showRecordsPrompt();
 }
 
-function markAllPaid() {
-  if (!confirm('Mark all drivers as paid?')) return;
+async function markAllPaid() {
+  var _cont = await txConfirm('Make sure you have downloaded the Excel and all payslips before marking as paid.', {icon:'💰',title:'Mark All Drivers as Paid?',okText:'Yes, mark all paid'});
+  if (!_cont) return;
   DATA.drivers.forEach(function(d){ if(d.stops>0) PAYROLL_STATUS[d.id] = 'paid'; });
   saveState();
   renderTable();
   updateSidebar();
   if (selectedDriverId) selectDriver(selectedDriverId);
-  showRecordsPrompt();
+  // Update button state to show paid
+  var btn = document.getElementById('btn-mark-paid');
+  if (btn) { btn.textContent = '✅ All Paid'; btn.disabled = true; btn.style.opacity = '.6'; }
+  showToast('✅ All drivers marked as paid — ready for New Cycle');
 }
 
 function showRecordsPrompt() {
@@ -3219,7 +3359,7 @@ function confirmStartHistoricalMode() {
     staff: localStorage.getItem(getStaffKey())
   };
   try { localStorage.setItem('tyfrex:desk:live_backup', JSON.stringify(backup)); } catch(e) {
-    showToast('❌ Could not start — your browser storage may be full'); return;
+    showToast('❌ Could not save — your browser storage may be full. Go to Settings and download a backup, then clear old data.'); return;
   }
   try { localStorage.setItem('tyfrex:desk:historical_mode', '1'); } catch(e) {}
 
@@ -3367,7 +3507,7 @@ function buildPastCyclesView() {
       +'<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">⚠ Processing a historical cycle'+(currentFile?' — '+currentFile:'')+'</div>'
       +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">'
       +(queueCount > 0 ? queueCount+' more file'+(queueCount!==1?'s':'')+' queued after this one. ' : '')
-      +'Go to the Payroll page to continue — upload the CSV, add staff, adjustments, clear-up supplement, just like a normal cycle. When done, click Archive to save and move to the next.'
+      +'Go to the Payroll page to continue — upload the CSV, add operational support, adjustments, clear-up supplement, just like a normal cycle. When done, click Archive to save and move to the next.'
       +'</div>'
       +'<div style="display:flex;gap:8px">'
       +'<button onclick="setView(\'payroll\')" style="padding:9px 16px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:8px;color:#05080F;font-size:13px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">Go to Payroll →</button>'
@@ -3537,7 +3677,7 @@ function buildCycleComparison() {
     ['Gross Income', 'grossIncome', '£', true],
     ['Driver Pay', 'driverPay', '£', true],
     ['Fleet Costs', 'fleetCosts', '£', true],
-    ['Staff Costs', 'staffCosts', '£', true],
+    ['Operation Support', 'staffCosts', '£', true],
     ['Net Profit', 'netProfit', '£', true],
     ['Margin %', 'margin', '%', false],
     ['Income/Stop', 'incomePerStop', '£', true]
@@ -3651,7 +3791,7 @@ function exportTaxYearXLSX(taxYearLabel) {
       exportXLSX(false, wb, shortLabel);
       addedCount++;
     });
-    if (addedCount === 0) { showToast('❌ Could not load any cycles for this tax year'); return; }
+    if (addedCount === 0) { showToast('❌ No cycles found for this tax year. Process a historical cycle first or check your company name matches.'); return; }
     if (failedLabels.length) {
       showToast('⚠ ' + failedLabels.length + ' cycle' + (failedLabels.length!==1?'s':'') + ' could not be loaded and were skipped: ' + failedLabels.join(', '));
     }
@@ -3680,7 +3820,7 @@ function exportTaxYearXLSX(taxYearLabel) {
     rows.push(['Gross Income (£)', f2(totGross)]);
     rows.push(['Driver Pay (£)', f2(totPay)]);
     rows.push(['Fleet Costs (£)', f2(totFleet)]);
-    rows.push(['Staff Costs (£)', f2(totStaff)]);
+    rows.push(['Operation Support (£)', f2(totStaff)]);
     rows.push(['Other Operating Costs (£)', f2(totOther)]);
     rows.push(['Net Profit (£)', f2(totProfit)]);
     rows.push(['Overall Margin (%)', f2(totMargin)]);
@@ -3688,7 +3828,7 @@ function exportTaxYearXLSX(taxYearLabel) {
     rows.push(['Income per Stop (£)', f2(totIPS)]);
     rows.push([]);
     rows.push(['CYCLE-BY-CYCLE BREAKDOWN']);
-    rows.push(['Period', 'Stops', 'Gross Income (£)', 'Driver Pay (£)', 'Fleet Costs (£)', 'Staff Costs (£)', 'Net Profit (£)', 'Margin (%)', 'VAT (£)', 'Income/Stop (£)']);
+    rows.push(['Period', 'Stops', 'Gross Income (£)', 'Driver Pay (£)', 'Fleet Costs (£)', 'Operation Support (£)', 'Net Profit (£)', 'Margin (%)', 'VAT (£)', 'Income/Stop (£)']);
     cycleData.forEach(function(c){
       rows.push([c.label, c.stops, f2(c.gross), f2(c.driverPay), f2(c.fleetCosts), f2(c.staffCosts), f2(c.netProfit), f2(c.margin), f2(c.vat), f2(c.ips)]);
     });
@@ -3715,7 +3855,7 @@ function exportTaxYearXLSX(taxYearLabel) {
     window.XLSX.writeFile(wb, filename);
     showToast('✅ Exported tax year ' + taxYearLabel + ' (' + addedCount + ' cycle' + (addedCount!==1?'s':'') + ')');
   } catch(e) {
-    showToast('❌ Export failed — see console for details');
+    showToast('❌ Export failed — try again. If the problem continues, contact hello@tyfrex.com');
     console.error(e);
   } finally {
     Object.keys(DATA).forEach(function(k){ delete DATA[k]; });
@@ -3736,7 +3876,7 @@ function exportArchivedCycleXLSX(archiveId) {
   // sees the swapped state.
   var snap = null;
   try { snap = JSON.parse(localStorage.getItem(archiveId) || 'null'); } catch(e) {}
-  if (!snap) { showToast('❌ Could not load this archived cycle'); return; }
+  if (!snap) { showToast('❌ Could not load this cycle — the data may be corrupted. Restore from your .tyfrex backup if needed.'); return; }
 
   // Snapshot every key currently on DATA so we can restore exactly, including
   // keys the archived cycle's settings object doesn't have.
@@ -3758,7 +3898,7 @@ function exportArchivedCycleXLSX(archiveId) {
     PAYROLL_STATUS = archivedStatus;
     try { exportXLSX(); } finally { PAYROLL_STATUS = realPayrollStatus; }
   } catch(e) {
-    showToast('❌ Export failed — see console for details');
+    showToast('❌ Export failed — try again. If the problem continues, contact hello@tyfrex.com');
     console.error(e);
   } finally {
     // Restore DATA to exactly what it was before, key for key.
@@ -3795,7 +3935,7 @@ function viewArchivedCycle(archiveId) {
   // cannot be affected no matter what the operator does on this screen.
   var snap = null;
   try { snap = JSON.parse(localStorage.getItem(archiveId) || 'null'); } catch(e) {}
-  if (!snap) { showToast('❌ Could not load this archived cycle'); return; }
+  if (!snap) { showToast('❌ Could not load this cycle — the data may be corrupted. Restore from your .tyfrex backup if needed.'); return; }
 
   // Reshape the snapshot into the flat structure buildSummary expects —
   // settings fields live directly on src (src._num_vans, src._dpd_topups,
@@ -3871,8 +4011,9 @@ function archiveCurrentCycle() {
   }
 }
 
-function newCycle() {
-  if (!confirm('Start a new payroll cycle? This will clear all driver data, staff assignments and P&L for this cycle.')) return;
+async function newCycle() {
+  var _cont = await txConfirm('This will archive the current cycle and clear all driver data ready for the next upload. Make sure all payslips are sent and drivers are marked as paid.', {icon:'🔄',title:'Start New Cycle?',okText:'Yes, start new cycle'});
+  if (!_cont) return;
   // Archive the cycle being closed before wiping it, so it can be reviewed
   // later under Past Cycles. Purely additive — doesn't change anything else
   // newCycle already does below.
@@ -4079,7 +4220,11 @@ function buildPLAnalysis() {
   var html = '<h2 style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">P&L Analysis</h2>';
 
   if (!cycles.length) {
-    html += '<p style="color:var(--t3);margin-top:20px">No archived cycles yet. Complete your first cycle and click New Cycle to start building your analysis.</p>';
+    html += '<div style="text-align:center;padding:40px 20px">'
+      + '<div style="font-size:48px;margin-bottom:16px">📈</div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--t2);margin-bottom:8px">No analysis data yet</div>'
+      + '<div style="font-size:13px;color:var(--t3);margin-bottom:20px;line-height:1.6">Complete your first payroll cycle and click New Cycle to start building your P&amp;L Analysis.</div>'
+      + '</div>';
     el.innerHTML = html;
     return;
   }
@@ -4943,7 +5088,7 @@ function buildSummary(src, staffOverride, targetElId) {
   // ── 4. STAFF COSTS BREAKDOWN ───────────────────────────────────────────────────
   if (totalStaffCost > 0) {
     var staffList = staffOverride || loadStaff();
-    html += '<div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Staff Costs</div>';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Operation Support</div>';
     html += '<div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:12px;overflow:hidden;margin-bottom:28px">';
     staffList.forEach(function(m){
       var mPay = (m.daily_rate||0)*(m.days||0);
@@ -5234,7 +5379,7 @@ function buildSettings() {
     // Flat rate scheme option (shown only if VAT registered)
     +(DATA._vat_registered ? '<div style="border-top:1px solid var(--bdr);padding-top:12px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center">'
-      +'<div><div style="font-size:13px;font-weight:600;color:var(--t1)">Flat Rate Scheme?</div>'
+      +'<div><div style="font-size:13px;font-weight:600;color:var(--t1)">Flat Rate VAT Scheme? <span class="tx-tip-icon" tabindex="0">?</span><span class="tx-tip-bubble">If VAT registered on HMRC Flat Rate Scheme, enter your sector percentage. Tyfrex estimates your VAT liability — confirm with your accountant.</span></div>'
       +'<div style="font-size:12px;color:var(--t2);margin-top:2px">Set your flat rate % (e.g. 9.5% for courier services). P&L will show actual VAT payable = income × rate% instead of 20%.</div></div>'
       +'<div style="display:flex;align-items:center;gap:8px;margin-left:16px">'
       +'<input id="st-flat-rate" type="number" step="0.1" min="0" max="20" value="'+(DATA._flat_rate_pct||0)+'" placeholder="%" '
@@ -5300,7 +5445,8 @@ function buildSettings() {
     +'<input type=\"file\" accept=\".tyfrex\" style=\"display:none\" onchange=\"restoreFromBackup(this.files[0])\">'
     +'</label>'
     +'<div style=\"font-size:11px;color:var(--t3);margin-top:8px\">Or drag a .tyfrex file anywhere on this page to restore</div>'
-    +'</div>';
+    +'<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--bdr);text-align:center;font-size:11px;color:var(--t3);font-family:IBM Plex Mono,monospace">'    +'<div style="font-size:11px;color:var(--gold);font-weight:600;margin-bottom:4px">Your business. Your payroll. Your device.</div>'
+    +'Tyfrex · <a href="mailto:hello@tyfrex.com" style="color:var(--t3)">hello@tyfrex.com</a>'    +'</div>';
   document.getElementById('settings-content').innerHTML = html;
 }
 
@@ -5714,24 +5860,25 @@ function sendPayslip(id) {
   generateDesktopPaySlip(d, false);
 }
 
-function getStableDriverPayRef(driverId, cycleLabel, coInit) {
-  // Stable per-driver-per-cycle pay reference. Generated ONCE on first request
-  // for a given driver+cycle, then always reused on every subsequent payslip
-  // regeneration — matches UK payroll-number convention (consistent across
-  // re-prints, only changes on genuine new employment/cycle).
+function getStablePayRef(entityId, cycleLabel, coInit) {
   var mapKey = 'tyfrex:desk:payrefmap:' + coInit;
   var map = {};
   try { map = JSON.parse(localStorage.getItem(mapKey) || '{}'); } catch(e) { map = {}; }
-  var driverKey = driverId + '|' + cycleLabel;
-  if (map[driverKey]) return map[driverKey];
+  var entityKey = entityId + '|' + cycleLabel;
+  if (map[entityKey]) return map[entityKey];
   var seqKey = 'tyfrex:desk:payref:' + coInit;
   var seq = (parseInt(localStorage.getItem(seqKey)) || 0) + 1;
   localStorage.setItem(seqKey, String(seq));
   var ref = coInit + '-' + new Date().getFullYear() + '-' + String(seq).padStart(4, '0');
-  map[driverKey] = ref;
+  map[entityKey] = ref;
   try { localStorage.setItem(mapKey, JSON.stringify(map)); } catch(e) {}
   return ref;
 }
+
+function getStableDriverPayRef(driverId, cycleLabel, coInit) {
+  return getStablePayRef(driverId, cycleLabel, coInit);
+}
+
 
 function generateDesktopPaySlip(d, previewOnly) {
   if (!window.jspdf) {
@@ -5739,7 +5886,7 @@ function generateDesktopPaySlip(d, previewOnly) {
     var s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
     s.onload = function(){ generateDesktopPaySlip(d, previewOnly); };
-    s.onerror = function(){ showToast('❌ PDF requires internet connection'); };
+    s.onerror = function(){ showToast('❌ PDF generation requires an internet connection for the PDF library. Connect to the internet and try again.'); };
     document.head.appendChild(s); return;
   }
   var co = DATA._company_name || 'Your Company';
@@ -5772,7 +5919,9 @@ function generateDesktopPaySlip(d, previewOnly) {
     ['Driver:', d.name||d.id],
     ['Driver ID:', d.id||''],
     ['Franchise No:', fd],
+    ['Tax Year:', taxYear],
     ['Period:', period],
+    ['Payment Date:', paymentDate],
     ['Issued:', issueDate],
     ['Ref:', payRef],
     ['Status:', 'Independent Contractor']
@@ -5896,7 +6045,8 @@ function generateDesktopPaySlip(d, previewOnly) {
   doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(120,120,120);
   doc.text(dlines, W/2, y, {align:'center'}); y += dlines.length*4+4;
   doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(200,146,42);
-  doc.text('Powered by Tyfrex', W/2, y, {align:'center'});
+  doc.text('Powered by Tyfrex', W/2, y, {align:'center'}); y+=5;
+  doc.setFontSize(8); doc.setTextColor(150,150,150); doc.text('Your business. Your payroll. Your device.', W/2, y, {align:'center'});
 
   if (previewOnly) {
     // Show preview in modal
@@ -5948,7 +6098,7 @@ function sendAllPayslips() {
     var s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
     s.onload = function(){ sendAllPayslips(); };
-    s.onerror = function(){ showToast('❌ PDF requires internet connection'); };
+    s.onerror = function(){ showToast('❌ PDF generation requires an internet connection for the PDF library. Connect to the internet and try again.'); };
     document.head.appendChild(s); return;
   }
   // Load JSZip
@@ -5957,7 +6107,7 @@ function sendAllPayslips() {
     var sz = document.createElement('script');
     sz.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
     sz.onload = function(){ sendAllPayslips(); };
-    sz.onerror = function(){ showToast('❌ ZIP library failed to load'); };
+    sz.onerror = function(){ showToast('❌ Could not load ZIP library — check your internet connection and try again.'); };
     document.head.appendChild(sz); return;
   }
 
@@ -6166,7 +6316,7 @@ function exportXLSX(returnBlob, externalWb, sheetPrefix) {
   if (totalDriverDedsXL > 0 || totalDriverTopsXL > 0) dashRows.push(['Driver Pay — Net Cost (£)', f2(totalDriver)]);
   dashRows.push(
     ['Fleet Costs (£)', f2(totalVanAll)],
-    ['Staff Costs (£)', f2(totalStaffCost)],
+    ['Operation Support (£)', f2(totalStaffCost)],
   );
   if (otherCostsTotalXL > 0) dashRows.push(['Other Operating Costs (£)', f2(otherCostsTotalXL)]);
   dashRows.push(
@@ -6525,16 +6675,13 @@ function renderPayrollStaff() {
   // Always show the section — operators need to know staff payroll exists
   if (section) section.style.display = '';
   if (!staff.length) {
-    listEl.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0">No staff added yet — <a href="#" onclick="setView(\'staff\');return false;" style="color:var(--gold)">go to Operational Support</a> to add helpers, managers or office staff.</div>';
+    listEl.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0">No staff added yet — <a href="#" onclick="setView(\'staff\');return false;" style="color:var(--gold)">go to Operation Support</a> to add helpers, managers or office support.</div>';
     if (totalEl) totalEl.textContent = '';
     return;
   }
 
   var co = DATA._company_name || 'Your Company';
   var coInit = co.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0,4);
-  var year = new Date().getFullYear();
-  var refBase = 'tyfrex:desk:staffref:'+coInit;
-  var lastRef; try { lastRef = parseInt(localStorage.getItem(refBase)||'0'); } catch(e){ lastRef=0; }
 
   var totalPay = staff.reduce(function(s,m){
     var gross=(m.daily_rate||0)*(m.days||0);
@@ -6554,8 +6701,8 @@ function renderPayrollStaff() {
     var isPaid=m.paid||false;
     var col=driverColour(m.name||'S');
     if (!m.pay_ref) {
-      lastRef++;
-      m.pay_ref = coInit+'-'+year+'-'+String(lastRef).padStart(4,'0');
+      var cycleForRef = (DATA.cycles&&DATA.cycles[0]&&DATA.cycles[0].label) || String(new Date().getFullYear());
+      m.pay_ref = getStablePayRef(m.id, cycleForRef, coInit);
       try { localStorage.setItem(refBase, String(lastRef)); } catch(e){}
       var all=loadStaff(); var idx=all.findIndex(function(s){return s.id===id;});
       if (idx>=0){ all[idx].pay_ref=m.pay_ref; saveStaffData(all); }
@@ -6701,15 +6848,15 @@ function buildStaffView() {
   var totalStaffCost = staff.reduce(function(s,m){return s+(m.daily_rate||0)*(m.days||0);},0);
 
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">';
-  html += '<h2 style="font-family:Syne,sans-serif;font-size:22px;font-weight:800">Staff</h2>';
+  html += '<h2 style="font-family:Syne,sans-serif;font-size:22px;font-weight:800">Operation Support</h2>';
   html += '<button onclick="openAddStaff(null)" style="padding:9px 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:8px;color:#05080F;font-size:13px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">+ Add Person</button>';
   html += '</div>';
 
   if (!staff.length) {
     html += '<div style="text-align:center;padding:60px 32px;color:var(--t3)">'
       +'<div style="font-size:48px;margin-bottom:16px;opacity:.4">👥</div>'
-      +'<h3 style="font-size:18px;font-weight:700;color:var(--t2);margin-bottom:8px">No staff added</h3>'
-      +'<p style="font-size:14px">Add helpers, loaders, managers and other non-driver staff.</p>'
+      +'<h3 style="font-size:18px;font-weight:700;color:var(--t2);margin-bottom:8px">No one added</h3>'
+      +'<p style="font-size:14px">Add helpers, loaders, managers and other operational support.</p>'
       +'</div>';
   } else {
     html += '<div style="background:var(--surf2);border:1px solid var(--bdr);border-radius:12px;overflow:hidden;margin-bottom:16px">';
@@ -6755,7 +6902,7 @@ function openAddStaff(editId) {
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(7,9,15,.8);backdrop-filter:blur(6px);z-index:2000;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML = '<div style="background:var(--surf1);border:1px solid var(--bdr2);border-radius:14px;padding:28px;width:420px">'
-    +'<div style="font-size:17px;font-weight:700;margin-bottom:20px">'+(editId?'Edit Staff Member':'Add Staff Member')+'</div>'
+    +'<div style="font-size:17px;font-weight:700;margin-bottom:20px">'+(editId?'Edit Person':'Add Person')+'</div>'
     +'<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Name</div>'
     +'<input id="st-name" type="text" value="'+(m?m.name:'')+'" placeholder="e.g. John Smith" style="width:100%;padding:10px 12px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:8px;color:var(--t1);font-size:14px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box"></div>'
     +'<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Role</div>'
@@ -6792,7 +6939,7 @@ function openAddStaff(editId) {
     saveStaffData(staff);
     document.body.removeChild(overlay);
     buildStaffView();
-    showToast('✅ Staff member saved');
+    showToast('✅ Person saved');
   };
   overlay.onclick = function(e){ if(e.target===overlay) document.body.removeChild(overlay); };
   setTimeout(function(){ overlay.querySelector('#st-name').focus(); },100);
@@ -6806,12 +6953,13 @@ function toggleStaffPaid(id) {
   buildStaffView();
 }
 
-function deleteStaff(id) {
-  if (!confirm('Remove this staff member?')) return;
+async function deleteStaff(id) {
+  var _cont = await txConfirm('This person will be removed from the current cycle.', {icon:'👤',title:'Remove Person?',okText:'Remove',danger:true});
+  if (!_cont) return;
   var staff = loadStaff().filter(function(s){return s.id!==id;});
   saveStaffData(staff);
   buildStaffView();
-  showToast('Staff member removed');
+  showToast('Person removed');
 }
 
 function ensureStaffPayRef(m) {
@@ -6822,9 +6970,7 @@ function ensureStaffPayRef(m) {
   var coInit = co.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0,4);
   var year = new Date().getFullYear();
   var refBase = 'tyfrex:desk:staffref:'+coInit;
-  var lastRef; try { lastRef = parseInt(localStorage.getItem(refBase)||'0'); } catch(e){ lastRef=0; }
-  lastRef++;
-  m.pay_ref = coInit+'-'+year+'-'+String(lastRef).padStart(4,'0');
+  m.pay_ref = getStablePayRef(m.id, (DATA.cycles&&DATA.cycles[0]&&DATA.cycles[0].label)||String(year), coInit);
   try { localStorage.setItem(refBase, String(lastRef)); } catch(e){}
   var all = loadStaff();
   var idx = all.findIndex(function(s){return s.id===m.id;});
@@ -6878,7 +7024,7 @@ function previewStaffPayslipDesktop(id) {
   var blob = doc.output('blob');
   var url = URL.createObjectURL(blob);
   window.open(url, '_blank');
-  showToast('📄 Staff payslip preview opened');
+  showToast('📄 Payslip preview opened');
 }
 
 function sendStaffPayslipDesktop(id) {
@@ -6923,7 +7069,7 @@ function sendStaffPayslipDesktop(id) {
   doc.text(dlines,W/2,y,{align:'center'});y+=dlines.length*4+4;
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(150,150,150);
   doc.text('Powered by Tyfrex',W/2,y,{align:'center'});
-  var filename = m.name.replace(/[^a-zA-Z0-9]/g,'_')+'_Staff_Payslip.pdf';
+  var filename = m.name.replace(/[^a-zA-Z0-9]/g,'_')+'_Payslip.pdf';
   var blob = doc.output('blob');
   var file = new File([blob],filename,{type:'application/pdf'});
   if (navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})) {
@@ -6932,5 +7078,110 @@ function sendStaffPayslipDesktop(id) {
 }
 checkLicence(init);
 </script>
+
+<!-- HELP PANEL OVERLAY -->
+<div id="help-panel-overlay" onclick="closeHelp()"></div>
+
+<!-- HELP PANEL -->
+<div id="help-panel">
+  <div style="padding:20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div style="font-size:16px;font-weight:700;color:var(--t1)">? Help & Guide</div>
+    <div style="font-size:10px;color:var(--gold);font-family:IBM Plex Mono,monospace;margin-top:3px">Your business. Your payroll. Your device.</div>
+    <button onclick="closeHelp()" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:4px">✕</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:20px">
+
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Getting Started</div>
+
+    <div class="help-item">
+      <div class="help-q">What is a Cycle?</div>
+      <div class="help-a">A cycle is one DPD payroll period — typically 28 days. Upload your CSVs, process payroll, then click New Cycle when done. Each cycle is archived automatically.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">Where do I get the CSV?</div>
+      <div class="help-a">Log into the DPD Franchise portal → Reports → Download your weekly/cycle payment report as CSV. Upload it directly into Tyfrex.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">What does Mark All Paid do?</div>
+      <div class="help-a">Marks all drivers as paid for this cycle. Do this after you have physically paid your drivers. Download the Excel and payslips first before marking paid.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">When do I click New Cycle?</div>
+      <div class="help-a">Only after you have: downloaded the Excel, sent all payslips to drivers, and marked all drivers as paid. New Cycle archives everything and clears the table for next week.</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin:20px 0 12px">Payments & Rates</div>
+
+    <div class="help-item">
+      <div class="help-q">What is the CD App Fee?</div>
+      <div class="help-a">DPD charges each operator £9.23 per FD number per cycle for the CD App device allowance. Tyfrex calculates this automatically from your CSV. You can adjust the rate in Settings.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">What is the Clear-up Supplement?</div>
+      <div class="help-a">A fixed payment for drivers on days where stops fall below a set threshold — typically when a route is short. Enable it per driver and set the threshold and amount.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">What is Day Rate?</div>
+      <div class="help-a">Instead of paying per stop, Day Rate pays a fixed amount per day worked. Useful for drivers on guaranteed daily pay regardless of stop count.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">What is Flat Rate VAT?</div>
+      <div class="help-a">If you are VAT registered on the HMRC Flat Rate Scheme, enter your sector rate here. Tyfrex estimates your VAT liability — this is a guide only, confirm with your accountant.</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin:20px 0 12px">Data & Backup</div>
+
+    <div class="help-item">
+      <div class="help-q">What is the .tyfrex backup file?</div>
+      <div class="help-a">A complete backup of all your Tyfrex data — drivers, settings, all archived cycles. It downloads automatically on every New Cycle. Keep it safe. If you ever clear your browser, drag it back into the app to restore everything.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">My data disappeared — what do I do?</div>
+      <div class="help-a">Go to Settings → Data Backup → Restore from .tyfrex file. Select your most recent backup from your Downloads folder or email.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">How do I process a historical cycle?</div>
+      <div class="help-a">Go to Past Cycles → Process Historical Cycle. This lets you import old CSVs to build up your P&L Analysis history. Process one cycle at a time, oldest first.</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin:20px 0 12px">Support</div>
+
+    <div style="background:var(--surf3);border-radius:10px;padding:14px;font-size:13px;color:var(--t2);line-height:1.6">
+      Need help? Email us at<br>
+      <a href="mailto:hello@tyfrex.com" style="color:var(--gold);font-weight:700">hello@tyfrex.com</a>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.help-item { margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--bdr); }
+.help-item:last-child { border-bottom:none; }
+.help-q { font-size:13px;font-weight:700;color:var(--t1);margin-bottom:5px;cursor:pointer; }
+.help-a { font-size:12px;color:var(--t3);line-height:1.6; }
+</style>
+
+
+<!-- STYLED CONFIRM MODAL -->
+<div id="tx-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="tx-confirm-title">
+  <div id="tx-confirm-box">
+    <div id="tx-confirm-icon"></div>
+    <div id="tx-confirm-title"></div>
+    <div id="tx-confirm-msg"></div>
+    <div id="tx-confirm-btns">
+      <button id="tx-confirm-cancel" onclick="txConfirmResolve(false)">Cancel</button>
+      <button id="tx-confirm-ok" onclick="txConfirmResolve(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
