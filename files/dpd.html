@@ -473,7 +473,7 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
 <div class="sheet" id="add-staff-sheet">
   <div class="sheet-handle"></div>
   <div style="padding:0 20px 24px">
-    <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:20px;font-family:Syne,sans-serif">Add Staff Member</div>
+    <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:20px;font-family:Syne,sans-serif">Add Operation Support</div>
     <div class="inp-lbl">Name</div>
     <input id="staff-name-inp" class="inp" type="text" placeholder="e.g. John Smith" autocomplete="off">
     <div class="inp-lbl" style="margin-top:13px">Role</div>
@@ -564,7 +564,7 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
       <div class="app-ic">TX</div>
       <div>
         <div class="app-company" id="topbar-company" onclick="closeAllSheets();goTab('today');" style="cursor:pointer" title="Tap to go home">Your Company Ltd</div>
-        <div class="app-byline">Powered by Tyfrex · <span style="color:var(--green)">DPD v112</span></div>
+        <div class="app-byline">Your business. Your payroll. Your device. &nbsp;·&nbsp; Powered by Tyfrex · <span style="color:var(--green)">DPD v112</span></div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:13px">
@@ -798,8 +798,8 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
       <!-- Staff payroll section -->
       <div id="staff-payroll-section" style="padding:0 14px 14px;margin-top:4px">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 8px">
-          <div style="font-size:13px;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;font-family:DM Mono,monospace">Staff This Cycle</div>
-          <button onclick="showAddStaffSheet()" style="background:var(--surf2);border:1px solid var(--bdr2);color:var(--gold);font-size:13px;font-weight:600;padding:6px 13px;border-radius:10px;cursor:pointer">+ Add Staff</button>
+          <div style="font-size:13px;font-weight:700;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;font-family:DM Mono,monospace">Operation Support</div>
+          <button onclick="showAddStaffSheet()" style="background:var(--surf2);border:1px solid var(--bdr2);color:var(--gold);font-size:13px;font-weight:600;padding:6px 13px;border-radius:10px;cursor:pointer">+ Add Person</button>
         </div>
         <div id="staff-list"></div>
       </div>
@@ -837,7 +837,7 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
 
   </div>
 
-  <nav class="bottom-nav">
+  <nav role="navigation" aria-label="Main navigation" class="bottom-nav">
     <button class="nav-item act" id="nav-today"   onclick="goTab('today')">  <div class="nav-icon">🏠</div><div class="nav-label">Today</div>  <div class="nav-badge" id="nb-today"   style="display:none"></div></button>
     <button class="nav-item"     id="nav-drivers" onclick="goTab('drivers')"><div class="nav-icon">👥</div><div class="nav-label">Drivers</div></button>
     <button class="nav-item"     id="nav-fleet"   onclick="goTab('fleet')">  <div class="nav-icon">🚐</div><div class="nav-label">Fleet 🔒</div>  <div class="nav-badge" id="nb-fleet"   style="display:none"></div></button>
@@ -2044,12 +2044,14 @@ function updateCDFeeDesc() {
 }
 
 function getStablePayRef(entityId, cycleLabel, coInit, kind) {
-  var mapKey = 'tyfrex:payrefmap:' + kind + ':' + coInit;
+  // Unified counter — kind parameter kept for compatibility but ignored
+  // Single sequence per company covers drivers AND operation support
+  var mapKey = 'tyfrex:payrefmap:' + coInit;
   var map = {};
   try { map = JSON.parse(localStorage.getItem(mapKey) || '{}'); } catch(e) { map = {}; }
   var entityKey = entityId + '|' + cycleLabel;
   if (map[entityKey]) return map[entityKey];
-  var seqKey = 'tyfrex:payref:' + kind + ':' + coInit;
+  var seqKey = 'tyfrex:payref:' + coInit;
   var seq = (parseInt(localStorage.getItem(seqKey)) || 0) + 1;
   localStorage.setItem(seqKey, String(seq));
   var ref = coInit + '-' + new Date().getFullYear() + '-' + String(seq).padStart(4, '0');
@@ -2057,6 +2059,7 @@ function getStablePayRef(entityId, cycleLabel, coInit, kind) {
   try { localStorage.setItem(mapKey, JSON.stringify(map)); } catch(e) {}
   return ref;
 }
+
 
 function calcCDFeeTotal() {
   var ids = {};
@@ -2496,7 +2499,6 @@ function handleHomeUpload(input) {
       if (page > numPages) {
         // Debug: log first 60 lines of extracted text to console
         var preview = allText.split('\n').slice(0,60).join('\n');
-        console.log('[YodelPlugin] RAW TEXT PREVIEW (first 60 lines):\n' + preview);
         callback(null, allText);
         return;
       }
@@ -2536,7 +2538,6 @@ function handleHomeUpload(input) {
   global.YodelPlugin = {
 
     readPDF: function(file, callback) {
-      console.log('[YodelPlugin] PDF loaded: ' + file.size + ' bytes');
 
       // Load PDF.js from CDN if not already loaded
       function withPDFJS(cb) {
@@ -2545,7 +2546,6 @@ function handleHomeUpload(input) {
         s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
         s.onload = function() {
           pdfjsLib.GlobalWorkerOptions.workerSrc = ''; // disable worker for local files
-          console.log('[YodelPlugin] PDF.js loaded');
           cb();
         };
         s.onerror = function() { callback(null, 'Failed to load PDF.js — check internet connection'); };
@@ -2567,7 +2567,6 @@ function handleHomeUpload(input) {
           pdfjsLib.getDocument({ data: typedArray }).promise.then(function(pdfDoc) {
             if (timedOut) return;
             clearTimeout(timeout);
-            console.log('[YodelPlugin] Pages: ' + pdfDoc.numPages);
             extractText(pdfDoc, function(pg, total) {
               // progress callback — update UI if available
               var procSub = document.getElementById('home-proc-sub');
@@ -2577,11 +2576,8 @@ function handleHomeUpload(input) {
               try {
                 window._lastRawText = text;
                 var invoice = parseInvoice(text);
-                console.log('[YodelPlugin] daily: ' + invoice.daily.length + ' records');
                 var s603 = invoice.week_summary['S65603'];
                 var s601 = invoice.week_summary['S65601'];
-                if (s603) console.log('[YodelPlugin] S65603: £' + s603.amount.toFixed(2) + (Math.abs(s603.amount - 541.44) < 0.01 ? ' ✅' : ' ⚠'));
-                if (s601) console.log('[YodelPlugin] S65601: £' + s601.amount.toFixed(2) + (Math.abs(s601.amount - 892.83) < 0.01 ? ' ✅' : ' ⚠'));
                 callback(invoice, null);
               } catch(ex) {
                 console.error('[YodelPlugin] parse error:', ex.message);
@@ -4296,17 +4292,17 @@ function saveStaffMember() {
   closeAllSheets();
   buildStaffList();
   buildMoney();
-  showToast("Staff member saved ✅");
+  showToast("Person saved ✅");
 }
 
 function deleteStaffMember(id) {
-  showConfirm("Remove staff member?", "This will remove them from the current cycle",
+  showConfirm("Remove person?", "This will remove them from the current cycle",
     function(){
       var staff = loadStaff().filter(function(s){return s.id!==id;});
       saveStaffData(staff);
       buildStaffList();
       buildMoney();
-      showToast("Staff member removed");
+      showToast("Person removed");
     });
 }
 
@@ -4315,7 +4311,7 @@ function buildStaffList() {
   if (!el) return;
   var staff = loadStaff();
   if (!staff.length) {
-    el.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0;text-align:center">No staff this cycle — tap + Add Staff to add helpers, loaders or managers</div>';
+    el.innerHTML = '<div style="font-size:13px;color:var(--t3);padding:8px 0;text-align:center">No operational support this cycle — tap + Add Person to add helpers, loaders or managers</div>';
     return;
   }
   el.innerHTML = '<div style="background:var(--surf);border-radius:var(--r);overflow:hidden">'
@@ -4427,13 +4423,16 @@ function generateStaffPaySlipPDF(staffId) {
   y = 38;
   // Info box
   doc.setFillColor(247,250,255); doc.setDrawColor(190,227,248);
-  doc.roundedRect(14, y-4, W-28, 38, 3, 3, "FD");
+  doc.roundedRect(14, y-4, W-28, 52, 3, 3, "FD");
   doc.setTextColor(34,34,34); doc.setFontSize(10); doc.setFont("helvetica","bold");
   doc.text("Name:", 20, y+4); doc.setFont("helvetica","normal"); doc.text(s.name, 55, y+4);
   doc.setFont("helvetica","bold"); doc.text("Role:", 20, y+11); doc.setFont("helvetica","normal"); doc.text(s.role, 55, y+11);
   doc.setFont("helvetica","bold"); doc.text("Pay Period:", 20, y+18); doc.setFont("helvetica","normal"); doc.text(s.days+" day"+(s.days!==1?"s":""), 55, y+18);
   doc.setFont("helvetica","bold"); doc.text("Reference:", 20, y+25); doc.setFont("helvetica","normal"); doc.text(payRef, 55, y+25);
   doc.setFont("helvetica","bold"); doc.text("Issued:", 20, y+32); doc.setFont("helvetica","normal"); doc.text(issueDate, 55, y+32);
+  var taxYearStaff=(function(){var y1=now.getFullYear();var m=now.getMonth()+1,day=now.getDate();if(m<4||(m===4&&day<6))y1=y1-1;return y1+'/'+String(y1+1).slice(-2);})();
+  doc.setFont("helvetica","bold"); doc.text("Tax Year:", 20, y+39); doc.setFont("helvetica","normal"); doc.text(taxYearStaff, 55, y+39);
+  doc.setFont("helvetica","bold"); doc.text("Payment Date:", 20, y+46); doc.setFont("helvetica","normal"); doc.text(issueDate, 55, y+46);
   y += 48;
   // Earnings table
   doc.setFillColor(26,54,93); doc.rect(14, y, W-28, 8, "F");
@@ -4458,6 +4457,7 @@ function generateStaffPaySlipPDF(staffId) {
   doc.text("Self-employed contractor payment. This document confirms payment only — tax obligations are the contractor's responsibility.", W/2, y+6, {align:"center", maxWidth:W-28});
   // Clickable Tyfrex link in footer
   doc.setTextColor(26,54,93);
+  doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text('Your business. Your payroll. Your device.',W/2,y+9,{align:'center'});
   doc.textWithLink('Powered by Tyfrex · ' + 'tyfrex.netlify.app', W/2, y+14, {
     align:'center',
     url:'https://tyfrex.netlify.app'
@@ -6824,6 +6824,54 @@ function pwGetTier(raw) {
   return k[2] || 'S';
 }
 
+
+// ── TYFREX FORMAT KEY SUPPORT ─────────────────────────────────────────────────
+// Accepts TYFREX-XXX-XXXXX-XXXXX keys validated against Netlify function
+// alongside the existing mobile hash-based key system
+
+var TYFREX_VALIDATE_URL = '/.netlify/functions/validate';
+var TYFREX_APP_ID = 'dpd-mobile';
+var TYFREX_MASTER = 'TYFREX-MASTER-ZDIBY-LAALK';
+
+function isTyfrexKey(raw) {
+  return (raw || '').trim().toUpperCase().indexOf('TYFREX-') === 0;
+}
+
+function isTyfrexKeyValid() {
+  // Check if a stored TYFREX key is locally valid (not expired)
+  try {
+    var key = localStorage.getItem('tyfrex:licence:key') || '';
+    var expiry = localStorage.getItem('tyfrex:licence:expiry') || '';
+    if (!key || !expiry) return false;
+    var today = new Date().toISOString().split('T')[0];
+    return expiry >= today;
+  } catch(e) { return false; }
+}
+
+function validateTyfrexKey(raw, callback) {
+  // Master key — always valid offline
+  if (raw.trim().toUpperCase() === TYFREX_MASTER) {
+    callback({ valid: true, operator: 'Tyfrex Admin', expiry: '2099-12-31' });
+    return;
+  }
+  // Server validation
+  fetch(TYFREX_VALIDATE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: raw.trim().toUpperCase(), app: TYFREX_APP_ID })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) { callback(d); })
+  .catch(function() {
+    // Offline — check local store
+    if (isTyfrexKeyValid()) {
+      callback({ valid: true, operator: 'offline', expiry: localStorage.getItem('tyfrex:licence:expiry') });
+    } else {
+      callback({ valid: false, reason: 'Could not reach server. Check internet connection.' });
+    }
+  });
+}
+
 function pwValidateKey(raw) {
   var k = raw.toUpperCase().replace(/[-\s]/g, '').replace(/[^A-Z0-9]/g, '');
   if (k.length !== 20) return false;
@@ -6859,11 +6907,13 @@ function pwInit() {
   // Check stored licence
   var stored = '';
   try { stored = localStorage.getItem(PW.KEY_LS) || ''; } catch(e) {}
-  if (stored && pwValidateKey(stored)) {
+  // Check stored TYFREX format key first
+  if (isTyfrexKeyValid()) {
+    PW.ACTIVE = true; PW.IN_TRIAL = false; PW.TIER = 'P'; PW.DRIVER_LIMIT = Infinity;
+  } else if (stored && pwValidateKey(stored)) {
     PW.ACTIVE   = true;
     PW.IN_TRIAL = false;
     PW.TIER     = pwGetTier(stored);
-    // Set driver limit based on tier
     PW.DRIVER_LIMIT = (PW.TIER === 'P') ? Infinity : 15;
     return;
   }
@@ -6937,18 +6987,46 @@ function pwActivate() {
   if (!raw) { errEl.textContent = 'Enter your licence key.'; return; }
   errEl.textContent = '';
 
+  // TYFREX format key — validate against server
+  if (isTyfrexKey(raw)) {
+    errEl.textContent = 'Checking…';
+    validateTyfrexKey(raw, function(result) {
+      if (result.valid) {
+        try {
+          localStorage.setItem('tyfrex:licence:key', raw.trim().toUpperCase());
+          localStorage.setItem('tyfrex:licence:expiry', result.expiry);
+          localStorage.setItem('tyfrex:licence:checked', Date.now().toString());
+        } catch(e) {}
+        PW.ACTIVE = true; PW.IN_TRIAL = false; PW.TIER = 'P'; PW.DRIVER_LIMIT = Infinity;
+        var statusRow = document.getElementById('pw-status-row');
+        var statusLbl = document.getElementById('pw-status-lbl');
+        if (statusRow) statusRow.style.display = '';
+        if (statusLbl) statusLbl.textContent = '✅ Activated — expires ' + result.expiry;
+        if (inp) inp.value = '';
+        errEl.textContent = '';
+        pwUpdateStatusUI();
+        setTimeout(function() {
+          document.getElementById('pw-overlay').style.display = 'none';
+        }, 1400);
+      } else {
+        errEl.textContent = result.reason || 'Invalid key — contact hello@tyfrex.com';
+        if (inp) { inp.style.borderColor = 'rgba(248,113,113,.5)'; setTimeout(function(){ if(inp) inp.style.borderColor=''; }, 1200); }
+      }
+    });
+    return;
+  }
+
+  // Original hash-based key validation
   if (pwValidateKey(raw)) {
     var clean = pwStripKey(raw);
     try { localStorage.setItem(PW.KEY_LS, clean); } catch(e) {}
     PW.ACTIVE   = true;
     PW.IN_TRIAL = false;
-    // Show success
     var statusRow = document.getElementById('pw-status-row');
     var statusLbl = document.getElementById('pw-status-lbl');
     if (statusRow) statusRow.style.display = '';
-    if (statusLbl) statusLbl.textContent = '✓ Activated — Tyfrex Pro unlocked';
+    if (statusLbl) statusLbl.textContent = '✅ Activated — Tyfrex Pro unlocked';
     inp.value = '';
-    // Update any licence status elements in the UI
     pwUpdateStatusUI();
     setTimeout(function() {
       document.getElementById('pw-overlay').style.display = 'none';
@@ -8577,10 +8655,23 @@ function generatePaySlipPDF(driverId, previewOnly) {
   var ix=mx+8,iy=y+7;
   var isYodelSlipHdr = d.carrier === 'YODEL';
   var driverName = (d.name && d.name !== d.id && d.name !== d.operator_id) ? d.name : null;
+  // Tax year calculation
+  var taxYear = (function() {
+    var recs = d.daily_records || [];
+    var startDate = recs.length ? new Date((recs[0].date||'').split(' ')[0]) : now;
+    var y1 = startDate.getFullYear();
+    var m = startDate.getMonth()+1, day = startDate.getDate();
+    if (m < 4 || (m === 4 && day < 6)) y1 = y1 - 1;
+    return y1 + '/' + String(y1+1).slice(-2);
+  })();
+  var paymentDate = issueDate;
+
   var info = isYodelSlipHdr ? [
     ['Driver:',       driverName || d.operator_id || d.id || ''],
     ['Operator ID:',  d.operator_id || d.id || ''],
+    ['Tax Year:',     taxYear],
     ['Period:',       period],
+    ['Payment Date:', paymentDate],
     ['Issued:',       issueDate],
     ['Ref:',          payRef],
     ['Status:',       'Independent Contractor']
@@ -8588,7 +8679,9 @@ function generatePaySlipPDF(driverId, previewOnly) {
     ['Driver:',       d.name],
     ['Driver ID:',    d.id||''],
     ['Franchise No:', d.fd_numbers&&d.fd_numbers.length?d.fd_numbers.join(', '):(d.fd||'')],
+    ['Tax Year:',     taxYear],
     ['Period:',       period],
+    ['Payment Date:', paymentDate],
     ['Issued:',       issueDate],
     ['Ref:',          payRef],
     ['Status:',       'Independent Contractor']
