@@ -8870,7 +8870,7 @@ function generatePaySlipPDF(driverId, previewOnly) {
   var blob=doc.output('blob'),burl=URL.createObjectURL(blob);
   if (previewOnly) {
     window.open(burl, '_blank');
-    showToast('📄 Preview opened — review then share from your browser');
+    showToast('📄 Preview opened — review then share from your computer');
     return;
   }
   if(navigator.share&&navigator.canShare){

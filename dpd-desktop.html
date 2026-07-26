@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tyfrex DPD Desktop v148</title>
+<title>Tyfrex DPD Desktop v163</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -860,7 +860,7 @@ td.amount.gold { color: var(--gold); }
   <div class="topbar-logo">TX</div>
   <div>
     <div class="topbar-company" id="tb-company">—</div>
-    <div class="topbar-byline">Powered by Tyfrex · DPD &nbsp;·&nbsp; Your business. Your payroll. Your device.</div>
+    <div class="topbar-byline">Powered by Tyfrex</div>
   </div>
   <div class="topbar-cycle" id="tb-cycle">No cycle loaded</div>
   <div class="topbar-actions" role="toolbar" aria-label="Payroll actions">
@@ -1138,6 +1138,7 @@ const DATA = {
 
 const SK = {
   drivers:  'tyfrex:desk:drivers',
+  logo:     'tyfrex:desk:logo',
   settings: 'tyfrex:desk:settings',
   paystatus:'tyfrex:desk:paystatus',
   company:  'tyfrex:desk:company',
@@ -1168,7 +1169,7 @@ function getOrCreateSalt() {
 }
 
 async function secureHash(str) {
-  // SHA-256 via the browser's native Web Crypto API — cryptographically
+  // SHA-256 via your computer's native Web Crypto API — cryptographically
   // strong, unlike the old djb2 hash which was a 32-bit, unsalted, reversible
   // hash-table function never intended for security use.
   var salt = getOrCreateSalt();
@@ -1250,7 +1251,7 @@ async function finishSetup() {
 
   // Save password hash — SHA-256 with per-install salt, not the old djb2 hash.
   try { localStorage.setItem(SK.passhash, await secureHash(p1)); } catch(e) {}
-  try { sessionStorage.setItem(SK.passhash + ':session', '1'); } catch(e) {}
+  try { localStorage.setItem(SK.passhash + ':session', '1'); } catch(e) {}
 
   // Hide all setup screens
   ['setup-screen','setup-fleet','setup-password'].forEach(function(id){
@@ -1330,9 +1331,9 @@ async function doLogin() {
   }
   // Remember this login for the current browser session only — sessionStorage
   // clears automatically when the tab/browser actually closes, so a refresh
-  // skips the login screen but closing the browser still requires logging
+  // skips the login screen but closing your computer still requires logging
   // back in, preserving the original security intent.
-  try { sessionStorage.setItem(SK.passhash + ':session', '1'); } catch(e) {}
+  try { localStorage.setItem(SK.passhash + ':session', '1'); } catch(e) {}
   document.getElementById('login-screen').style.display = 'none';
   var co = '';
   try { co = localStorage.getItem(SK.company) || ''; } catch(e) {}
@@ -1581,7 +1582,7 @@ function checkLicence(onValid) {
 
 // ── BACKUP / RESTORE SYSTEM ──────────────────────────────────────────────────
 // Auto-exports a .tyfrex file on New Cycle so operators have a local recovery
-// file even if they clear the browser. Restore by dragging file onto app.
+// file even if they lose their data. Restore by dragging file onto app.
 
 var BACKUP_PREFIX = 'TYFREX_DPD_';  // identifies this app's backup
 var BACKUP_VERSION = 1;
@@ -1589,6 +1590,7 @@ var BACKUP_KEYS = [
   // Settings & identity
   'tyfrex:desk:company', 'tyfrex:desk:settings', 'tyfrex:desk:passhash',
   'tyfrex:desk:backup_email', 'tyfrex:desk:paystatus',
+  SK.logo,
   // Drivers & staff
   'tyfrex:desk:drivers',
   // Payment references
@@ -1764,7 +1766,7 @@ function init() {
   var hash = '';
   try { hash = localStorage.getItem(SK.passhash) || ''; } catch(e) {}
   var hasSession = false;
-  try { hasSession = sessionStorage.getItem(SK.passhash + ':session') === '1'; } catch(e) {}
+  try { hasSession = localStorage.getItem(SK.passhash + ':session') === '1'; } catch(e) {}
 
   if (co && hash && hasSession) {
     // Already logged in this browser session (e.g. just refreshed the page)
@@ -1943,6 +1945,7 @@ function applyRows(rows, fileCount) {
 
   // Group by driver
   var driverMap = {};
+  var duplicateCount = 0;
   rows.forEach(function(r) {
     var key = r.driverCode || r.driverName;
     if (!key) return;
@@ -1962,6 +1965,16 @@ function applyRows(rows, fileCount) {
       driverMap[key].daily_records = [];
     }
     var d = driverMap[key];
+
+    // ── DUPLICATE DETECTION ───────────────────────────────────────────────────
+    // Skip rows where this driver already has a record for this date
+    // Prevents double-counting when the same CSV is uploaded twice
+    var isDuplicate = d.daily_records.some(function(rec) {
+      return rec.date === r.date && rec.route === r.route;
+    });
+    if (isDuplicate) { duplicateCount++; return; }
+    // ─────────────────────────────────────────────────────────────────────────
+
     if (r.fdNum && !d.fd_numbers.includes(r.fdNum)) d.fd_numbers.push(r.fdNum);
     d.stops += r.stops;
     d.miles += r.miles;
@@ -2002,7 +2015,8 @@ function applyRows(rows, fileCount) {
   _recordsDownloaded = { xlsx: false, payslips: false }; // new data = records not yet downloaded
   renderTable();
   updateSidebar();
-  showToast('✅ ' + DATA.drivers.length + ' drivers loaded from ' + fileCount + ' file' + (fileCount>1?'s':''));
+  var dupMsg = duplicateCount > 0 ? ' — ' + duplicateCount + ' duplicate row' + (duplicateCount>1?'s':'') + ' skipped' : '';
+  showToast('✅ ' + DATA.drivers.length + ' drivers loaded from ' + fileCount + ' file' + (fileCount>1?'s':'') + dupMsg);
 }
 
 // ── TABLE ────────────────────────────────────────────────────────────────────
@@ -2714,19 +2728,6 @@ function selectDriver(id) {
   document.getElementById('d-avatar').textContent = initials(d.name||d.id);
   document.getElementById('d-name').textContent = d.name || d.id;
   var fd = (d.fd_numbers&&d.fd_numbers.length) ? d.fd_numbers.join(', ') : (d.fd||d.id||'');
-
-  // Tax year — UK tax year runs 6 Apr to 5 Apr
-  var taxYear = (function() {
-    var startDate = recs.length ? new Date((recs[recs.length-1].date||'').split(' ')[0]) : now;
-    var y1 = startDate.getFullYear();
-    var m = startDate.getMonth()+1, day = startDate.getDate();
-    // Before 6 April = previous tax year
-    if (m < 4 || (m === 4 && day < 6)) y1 = y1 - 1;
-    return y1 + '/' + String(y1+1).slice(-2);
-  })();
-
-  // Payment date = issue date (payslip generated when operator pays)
-  var paymentDate = issueDate;
   var dayLabel = (PAYROLL_FROM||PAYROLL_TO) ? Math.round(d.days||0)+' days (filtered)' : Math.round(d.days||0)+' days';
   document.getElementById('d-sub').textContent = fd + ' · ' + dayLabel;
 
@@ -2971,7 +2972,8 @@ async function markAllPaid() {
   // Update button state to show paid
   var btn = document.getElementById('btn-mark-paid');
   if (btn) { btn.textContent = '✅ All Paid'; btn.disabled = true; btn.style.opacity = '.6'; }
-  showToast('✅ All drivers marked as paid — ready for New Cycle');
+  showToast('✅ All drivers marked as paid');
+  setTimeout(function(){ showRecordsPrompt(); }, 400);
 }
 
 function showRecordsPrompt() {
@@ -3359,7 +3361,7 @@ function confirmStartHistoricalMode() {
     staff: localStorage.getItem(getStaffKey())
   };
   try { localStorage.setItem('tyfrex:desk:live_backup', JSON.stringify(backup)); } catch(e) {
-    showToast('❌ Could not save — your browser storage may be full. Go to Settings and download a backup, then clear old data.'); return;
+    showToast('❌ Could not save — your computer storage may be full. Go to Settings and download a backup, then clear old data.'); return;
   }
   try { localStorage.setItem('tyfrex:desk:historical_mode', '1'); } catch(e) {}
 
@@ -3463,7 +3465,9 @@ function exitHistoricalMode() {
 }
 
 function getArchiveIndexKey() {
-  var co = (DATA._company_name||'default').toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
+  var co = DATA._company_name || '';
+  if (!co) { try { co = localStorage.getItem(SK.company) || ''; } catch(e) {} }
+  co = (co || 'default').toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
   return 'tyfrex:desk:archive_index:'+co;
 }
 
@@ -3484,7 +3488,7 @@ function buildPastCyclesView() {
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--surf2);border:1px solid var(--bdr);border-radius:10px">'
       +'<div style="flex:1">'
       +'<div style="font-size:12px;font-weight:700;color:var(--t2)">Record Retention — '+idx.length+' of 79 cycles stored ('+yearsStored+' years)</div>'
-      +'<div style="font-size:11px;color:var(--t3);margin-top:2px">HMRC can investigate up to 6 years back · '+(pct >= 90 ? '⚠ Approaching limit — export your tax-year workbooks to keep permanent records' : pct >= 75 ? 'Consider exporting tax-year workbooks for permanent records' : 'On track for full 6-year HMRC retention')+'</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-top:2px">Every cycle you process builds your business intelligence · '+(pct >= 90 ? '⚠ Approaching limit — export your tax-year workbooks to keep permanent records' : pct >= 75 ? 'The longer you use Tyfrex, the more your data works for you' : 'The longer you use Tyfrex, the more your data works for you')+'</div>'
       +'</div>'
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
       +'<div style="font-size:13px;font-weight:800;font-family:IBM Plex Mono,monospace;color:'+storageColor+'">'+pct+'%</div>'
@@ -3921,7 +3925,7 @@ function exportMultipleArchivedCyclesXLSX() {
     if (i >= ids.length) { showToast('✅ Exported ' + ids.length + ' cycle' + (ids.length!==1?'s':'')); return; }
     exportArchivedCycleXLSX(ids[i]);
     i++;
-    setTimeout(next, 600); // small delay so the browser doesn't block rapid sequential downloads
+    setTimeout(next, 600); // small delay so your computer doesn't block rapid sequential downloads
   }
   next();
 }
@@ -5313,9 +5317,51 @@ function buildRoutes() {
 }
 
 // ── SETTINGS VIEW ─────────────────────────────────────────────────────────────
+
+// ── COMPANY LOGO ─────────────────────────────────────────────────────────────
+function uploadLogo(input) {
+  var file = input.files[0];
+  if (!file) return;
+  if (file.size > 102400) { showToast('⚠️ Image too large — please use an image under 100KB'); input.value=''; return; }
+  if (!['image/png','image/jpeg'].includes(file.type)) { showToast('⚠️ Please use a JPG or PNG image'); input.value=''; return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var b64 = e.target.result;
+    try { localStorage.setItem(SK.logo, b64); } catch(e) { showToast('⚠️ Could not save logo — image may be too large'); return; }
+    showLogoPreview(b64);
+    showToast('✅ Logo saved — will appear on all payslips');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogo() {
+  try { localStorage.removeItem(SK.logo); } catch(e) {}
+  var wrap = document.getElementById('logo-preview-wrap');
+  if (wrap) wrap.style.display = 'none';
+  showToast('Logo removed');
+}
+
+function getLogoBase64() {
+  try { return localStorage.getItem(SK.logo) || null; } catch(e) { return null; }
+}
+
+function showLogoPreview(b64) {
+  var wrap = document.getElementById('logo-preview-wrap');
+  var img = document.getElementById('logo-preview');
+  if (wrap && img && b64) {
+    img.src = b64;
+    wrap.style.display = '';
+  }
+}
+
 function backupNow() { exportBackup(false); }
 
 function buildSettings() {
+  // Load logo preview after render
+  setTimeout(function() {
+    var b64 = getLogoBase64();
+    if (b64) showLogoPreview(b64);
+  }, 50);
   var html = '<h2 style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;margin-bottom:24px">Settings</h2>';
   html += '<div style="display:flex;flex-direction:column;gap:16px;max-width:560px">';
 
@@ -5436,9 +5482,8 @@ function buildSettings() {
 
   html += '</div>';
   html += '<button onclick="saveSettings()" style="margin-top:20px;padding:12px 24px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:10px;color:#05080F;font-size:14px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">Save Settings</button>'
-    +'<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--bdr)">'
-    +'<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:6px">Data Backup</div>'
-    +'<div style="font-size:12px;color:var(--t3);margin-bottom:10px">Download a backup of all your Tyfrex data. Keep this file safe — it can restore everything if you clear your browser.</div>'
+    +'<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--bdr)">'    +'<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:6px">Company Logo</div>'    +'<div style="font-size:12px;color:var(--t3);margin-bottom:10px">Your logo will appear on every payslip. Use a landscape image, JPG or PNG, under 100KB. Recommended: 200×100px.</div>'    +'<div id="logo-preview-wrap" style="margin-bottom:10px;display:none"><img id="logo-preview" style="max-height:50px;max-width:200px;border-radius:6px;border:1px solid var(--bdr2)" /></div>'    +'<div style="display:flex;gap:8px">'    +'<label style="flex:1;padding:11px;background:var(--surf3);border:1px solid var(--bdr2);border-radius:9px;color:var(--t2);font-size:13px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;text-align:center">'    +'📤 Upload Logo'    +'<input type="file" accept="image/png,image/jpeg" style="display:none" onchange="uploadLogo(this)">'    +'</label>'    +'<button onclick="removeLogo()" style="padding:11px 16px;background:var(--surf3);border:1px solid var(--bdr2);border-radius:9px;color:var(--t3);font-size:13px;cursor:pointer;font-family:DM Sans,sans-serif">Remove</button>'    +'</div>'    +'</div>'    +'<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--bdr)">'    +'<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:6px">Data Backup</div>'
+    +'<div style="font-size:12px;color:var(--t3);margin-bottom:10px">Download a backup of all your Tyfrex data. Keep this file safe — if you get a new computer or lose your data, use this file to restore everything.</div>'
     +'<button onclick="backupNow()" style="width:100%;padding:11px;background:var(--surf3);border:1px solid var(--bdr2);border-radius:9px;color:var(--t2);font-size:14px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;margin-bottom:8px">💾 Download Backup (.tyfrex)</button>'
     +'<label style="display:block;width:100%;box-sizing:border-box;padding:11px;background:var(--surf3);border:1px solid var(--bdr2);border-radius:9px;color:var(--t3);font-size:14px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;text-align:center">'
     +'📂 Restore from .tyfrex file'
@@ -5904,15 +5949,44 @@ function generateDesktopPaySlip(d, previewOnly) {
   if (recs.length) period = toDD(recs[recs.length-1].date) + ' \u2013 ' + toDD(recs[0].date);
   var fd = (d.fd_numbers&&d.fd_numbers.length) ? d.fd_numbers.join(', ') : (d.fd||d.id||'');
 
+  // Tax year — UK tax year runs 6 Apr to 5 Apr
+  var taxYear = (function() {
+    var startDate = recs.length ? new Date((recs[recs.length-1].date||'').split(' ')[0]) : now;
+    var y1 = startDate.getFullYear();
+    var m = startDate.getMonth()+1, day = startDate.getDate();
+    if (m < 4 || (m === 4 && day < 6)) y1 = y1 - 1;
+    return y1 + '/' + String(y1+1).slice(-2);
+  })();
+  var paymentDate = issueDate;
+
   var doc = new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var W=210, mx=20, cw=W-mx*2, y=22;
 
-  // Header
-  doc.setFont('helvetica','bold'); doc.setFontSize(26); doc.setTextColor(20,20,20);
-  doc.text(co, W/2, y, {align:'center'}); y+=3;
-  doc.setLineWidth(0.5); doc.setDrawColor(200,200,200); doc.line(mx,y+3,W-mx,y+3); y+=10;
-  doc.setFont('helvetica','normal'); doc.setFontSize(14); doc.setTextColor(60,60,60);
-  doc.text('SELF-EMPLOYED PAYMENT SUMMARY', W/2, y, {align:'center'}); y+=12;
+  // ── HEADER — Option B: Logo centred above, company name, title centred ──────
+  var logoB64 = getLogoBase64();
+  var headerY = y;
+
+  if (logoB64) {
+    // Logo centred
+    try {
+      var logoType = logoB64.indexOf('image/png') !== -1 ? 'PNG' : 'JPEG';
+      doc.addImage(logoB64, logoType, W/2 - 20, headerY, 40, 20);
+    } catch(e) {}
+    headerY += 24;
+  }
+
+  // Company name centred
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(20,20,20);
+  doc.text(co, W/2, headerY, {align:'center'}); headerY += 6;
+
+  // Document title centred below
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(80,80,80);
+  doc.text('SELF-EMPLOYED PAYMENT SUMMARY', W/2, headerY, {align:'center'}); headerY += 4;
+
+  // Divider
+  y = headerY + 4;
+  doc.setLineWidth(0.4); doc.setDrawColor(200,200,200);
+  doc.line(mx, y, W - mx, y); y += 8;
 
   // Info box
   var info = [
@@ -7139,7 +7213,7 @@ checkLicence(init);
 
     <div class="help-item">
       <div class="help-q">What is the .tyfrex backup file?</div>
-      <div class="help-a">A complete backup of all your Tyfrex data — drivers, settings, all archived cycles. It downloads automatically on every New Cycle. Keep it safe. If you ever clear your browser, drag it back into the app to restore everything.</div>
+      <div class="help-a">A complete backup of all your Tyfrex data — drivers, settings, all archived cycles. It downloads automatically on every New Cycle. Keep it safe. If you ever get a new computer or lose your data, drag it back into the app to restore everything.</div>
     </div>
 
     <div class="help-item">
@@ -7148,8 +7222,23 @@ checkLicence(init);
     </div>
 
     <div class="help-item">
+      <div class="help-q">How do I add my company logo to payslips?</div>
+      <div class="help-a">Go to Settings → Company Logo → Upload Logo. Use a JPG or PNG image under 100KB. Recommended size: 200×100px landscape. Your logo will appear on every payslip from that point forward.</div>
+    </div>
+
+    <div class="help-item">
       <div class="help-q">How do I process a historical cycle?</div>
       <div class="help-a">Go to Past Cycles → Process Historical Cycle. This lets you import old CSVs to build up your P&L Analysis history. Process one cycle at a time, oldest first.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">How do I get my records to my accountant?</div>
+      <div class="help-a">Go to Past Cycles → Export Tax Year XLSX. This generates a complete workbook of every cycle in that tax year — driver pay, costs, P&L — ready to send directly to your accountant. You can do this at any time as long as your cycles are archived.</div>
+    </div>
+
+    <div class="help-item">
+      <div class="help-q">What should I send my accountant at year end?</div>
+      <div class="help-a">Export the Tax Year XLSX from Past Cycles and email it to your accountant. That single file contains every payroll cycle, all driver payments, and your P&L for the full tax year. Nothing else is needed from Tyfrex.</div>
     </div>
 
     <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin:20px 0 12px">Support</div>

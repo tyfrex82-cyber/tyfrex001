@@ -8848,7 +8848,7 @@ function generatePaySlipPDF(driverId, previewOnly) {
   // Preview mode — open in new tab for operator to review
   if (previewOnly) {
     window.open(burl, '_blank');
-    showToast('📄 Preview opened — review then share from your browser');
+    showToast('📄 Preview opened — review then share from your computer');
     return;
   }
   if(navigator.share&&navigator.canShare){
