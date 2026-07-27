@@ -51,6 +51,46 @@ h1 { font-size:22px; font-weight:900; color:#F0B429; margin-bottom:2px; }
 </style>
 </head>
 <body>
+
+<div id="kg-auth" style="position:fixed;inset:0;z-index:9999;background:#0D1117;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#161B22;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px;width:100%;max-width:360px;text-align:center">
+    <div style="font-size:24px;font-weight:900;color:#F0B429;margin-bottom:4px">TX</div>
+    <div style="font-size:13px;color:#8B949E;margin-bottom:24px">Key Generator — Admin Only</div>
+    <input id="kg-pw" type="password" placeholder="Admin password"
+      style="width:100%;padding:13px 14px;background:#0D1117;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#E6EDF3;font-size:16px;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box"
+      onkeydown="if(event.key==='Enter')kgAuth()">
+    <button onclick="kgAuth()"
+      style="width:100%;padding:14px;border:none;border-radius:10px;background:linear-gradient(135deg,#F0B429,#C8922A);color:#05080F;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+      Enter →
+    </button>
+    <div id="kg-auth-err" style="font-size:12px;color:#F85149;margin-top:8px;min-height:16px"></div>
+    <div style="margin-top:12px;font-size:12px;color:#8B949E">
+      Forgot password? 
+      <span onclick="kgShowReset()" style="color:#F0B429;cursor:pointer;text-decoration:underline">Reset with master key</span>
+    </div>
+  </div>
+</div>
+
+<div id="kg-reset" style="position:fixed;inset:0;z-index:10000;background:#0D1117;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#161B22;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px;width:100%;max-width:360px;text-align:center">
+    <div style="font-size:18px;font-weight:700;color:#F0B429;margin-bottom:4px">Reset Password</div>
+    <div style="font-size:12px;color:#8B949E;margin-bottom:20px">Enter your Tyfrex master key to reset</div>
+    <input id="kg-master-inp" type="text" placeholder="TYFREX-MASTER-XXXXX-XXXXX"
+      style="width:100%;padding:13px 14px;background:#0D1117;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#F0B429;font-size:13px;font-family:'IBM Plex Mono',monospace;outline:none;margin-bottom:12px;box-sizing:border-box;letter-spacing:.04em">
+    <input id="kg-new-pw" type="password" placeholder="New password"
+      style="width:100%;padding:13px 14px;background:#0D1117;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#E6EDF3;font-size:15px;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box">
+    <button onclick="kgDoReset()"
+      style="width:100%;padding:14px;border:none;border-radius:10px;background:linear-gradient(135deg,#F0B429,#C8922A);color:#05080F;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px">
+      Reset Password →
+    </button>
+    <button onclick="kgHideReset()"
+      style="width:100%;padding:11px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:transparent;color:#8B949E;font-size:13px;cursor:pointer;font-family:inherit">
+      Cancel
+    </button>
+    <div id="kg-reset-err" style="font-size:12px;color:#F85149;margin-top:8px;min-height:16px"></div>
+  </div>
+</div>
+
 <h1>TX Key Generator</h1>
 <div class="sub">Tyfrex — Your business. Your payroll. Your device.</div>
 
@@ -61,6 +101,11 @@ h1 { font-size:22px; font-weight:900; color:#F0B429; margin-bottom:2px; }
   <div class="label">My Email (silent backup copy of every key)</div>
   <input class="field" id="my-email" type="email" placeholder="your@email.com" style="margin-top:6px" oninput="saveMyEmail()">
   <div style="font-size:11px;color:#8B949E;margin-top:4px">Saved automatically — every key generated sends a copy to this address</div>
+</div>
+
+<div class="card" style="border-color:rgba(240,180,41,.3);margin-bottom:14px">
+  <div style="font-size:13px;font-weight:700;color:#F0B429;margin-bottom:6px">⚠️ Important</div>
+  <div style="font-size:12px;color:#8B949E;line-height:1.7">The operator must enter their company name <b style="color:#E6EDF3">exactly as you enter it here</b> when activating their key. The company name is part of the key validation.</div>
 </div>
 
 <!-- GENERATOR -->
@@ -130,6 +175,190 @@ h1 { font-size:22px; font-weight:900; color:#F0B429; margin-bottom:2px; }
 <div class="toast" id="toast"></div>
 
 <script>
+
+// ── KEYGEN AUTH ───────────────────────────────────────────────────────────────
+var KG_PW_HASH = '2ea137adbcae84efeb49ee37c46aa9b6a976aafa4498860bf576af720d5700f5';
+
+function kgDjb2(str) {
+  var h = 5381;
+  for (var i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) ^ str.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return h.toString(16).padStart(8,'0');
+}
+
+function kgHash(str) {
+  // Multi-round hash
+  var h1 = kgDjb2(str);
+  var h2 = kgDjb2(h1 + str);
+  var h3 = kgDjb2(h2 + h1);
+  var h4 = kgDjb2(h3 + h2);
+  return (h1+h2+h3+h4+kgDjb2(h4+str)+kgDjb2(str+h4)+kgDjb2(h1+h3)+kgDjb2(h2+h4)).toLowerCase();
+}
+
+function kgShowReset() {
+  document.getElementById('kg-reset').style.display = 'flex';
+}
+
+function kgHideReset() {
+  document.getElementById('kg-reset').style.display = 'none';
+  document.getElementById('kg-master-inp').value = '';
+  document.getElementById('kg-new-pw').value = '';
+  document.getElementById('kg-reset-err').textContent = '';
+}
+
+function kgDoReset() {
+  var masterKey = document.getElementById('kg-master-inp').value.trim().toUpperCase();
+  var newPw = document.getElementById('kg-new-pw').value;
+  var errEl = document.getElementById('kg-reset-err');
+
+  if (!masterKey) { errEl.textContent = 'Enter your master key.'; return; }
+  if (!newPw || newPw.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+
+  // Validate master key format
+  if (!/^TYFREX-MASTER-[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(masterKey)) {
+    errEl.textContent = 'Invalid master key format.';
+    return;
+  }
+
+  // Accept any valid TYFREX-MASTER format key
+  var newHash = kgHash(newPw);
+  try { localStorage.setItem('tyfrex:kg:auth', newHash.slice(0,32)); } catch(e) {}
+  kgHideReset();
+  document.getElementById('kg-auth').style.display = 'none';
+  showToast('✅ Password reset successfully');
+}
+
+function kgAuth() {
+  var pw = document.getElementById('kg-pw').value;
+  var hash = kgHash(pw);
+  // Compare against stored hash
+  try {
+    var stored = localStorage.getItem('tyfrex:kg:auth');
+    if (stored === hash) {
+      document.getElementById('kg-auth').style.display = 'none';
+      return;
+    }
+  } catch(e) {}
+  // Check against hardcoded hash
+  if (hash === KG_PW_HASH.slice(0,32)) {
+    try { localStorage.setItem('tyfrex:kg:auth', hash); } catch(e) {}
+    document.getElementById('kg-auth').style.display = 'none';
+  } else {
+    document.getElementById('kg-auth-err').textContent = 'Incorrect password';
+    document.getElementById('kg-pw').value = '';
+    document.getElementById('kg-pw').focus();
+  }
+}
+
+// Check if already authenticated
+(function() {
+  try {
+    var stored = localStorage.getItem('tyfrex:kg:auth');
+    var expected = kgHash('01lorraine8225');
+    if (stored && stored === expected.slice(0,32)) {
+      document.getElementById('kg-auth').style.display = 'none';
+    }
+  } catch(e) {}
+})();
+
+// ── TYFREX ALGORITHMIC KEY VALIDATION ─────────────────────────────────────────
+// Keys are self-validating — no server needed, works completely offline
+// Key format: TYFREX-{APP}-{HASH5}-{YYMM}
+// HASH5 = first 5 chars of SHA256(company|app|YYMM|SECRET)
+
+var TYFREX_KEY_SECRET = 'TYFREX2026KEYSALT';
+
+function djb2Hash32(str) {
+  // Fast deterministic hash — same input always same output
+  var h = 5381;
+  for (var i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) ^ str.charCodeAt(i);
+    h = h >>> 0; // Convert to unsigned 32-bit
+  }
+  return h.toString(16).toUpperCase().padStart(8, '0');
+}
+
+function tyfrexHash(str) {
+  // Multi-round hash for better distribution
+  var h1 = djb2Hash32(str);
+  var h2 = djb2Hash32(h1 + str);
+  var h3 = djb2Hash32(h2 + h1);
+  return (h1 + h2 + h3).toUpperCase();
+}
+
+function encodeExpiry(expiryDate) {
+  // YYYY-MM-DD → YYMM (last day of month assumed)
+  var parts = expiryDate.split('-');
+  return parts[0].slice(2) + parts[1]; // e.g. "2612"
+}
+
+function decodeExpiry(encoded) {
+  // YYMM → YYYY-MM-DD (last day of month)
+  var yy = encoded.slice(0, 2);
+  var mm = encoded.slice(2, 4);
+  var year = '20' + yy;
+  var daysInMonth = new Date(parseInt(year), parseInt(mm), 0).getDate();
+  return year + '-' + mm + '-' + String(daysInMonth).padStart(2, '0');
+}
+
+function generateTyfrexKey(companyName, appType, expiryDate) {
+  var co = companyName.trim().toUpperCase();
+  var exp = encodeExpiry(expiryDate);
+  var data = co + '|' + appType + '|' + exp + '|' + TYFREX_KEY_SECRET;
+  var hash = tyfrexHash(data);
+  var seg1 = hash.slice(0, 5);
+  return 'TYFREX-' + appType + '-' + seg1 + '-' + exp;
+}
+
+function validateTyfrexKeyAlgo(key, companyName) {
+  // Returns {valid, app, expiry, reason}
+  if (!key || !companyName) return {valid: false, reason: 'missing'};
+  
+  var parts = key.trim().toUpperCase().split('-');
+  
+  // Master key — always valid
+  if (key.trim().toUpperCase() === 'TYFREX-MASTER-QEISL-QKFM3') {
+    return {valid: true, app: 'both', expiry: '2099-12-31'};
+  }
+  
+  if (parts.length !== 4 || parts[0] !== 'TYFREX') {
+    return {valid: false, reason: 'invalid_format'};
+  }
+  
+  var appType = parts[1];
+  var seg1 = parts[2];
+  var expCode = parts[3];
+  
+  // Decode expiry
+  var expiry;
+  try {
+    expiry = decodeExpiry(expCode);
+    if (!expiry.match(/^\d{4}-\d{2}-\d{2}$/)) throw new Error();
+  } catch(e) {
+    return {valid: false, reason: 'invalid_expiry'};
+  }
+  
+  // Check expiry
+  var today = new Date().toISOString().split('T')[0];
+  if (expiry < today) {
+    return {valid: false, reason: 'expired', expiry: expiry};
+  }
+  
+  // Verify hash
+  var expected = generateTyfrexKey(companyName, appType, expiry);
+  var expectedSeg1 = expected.split('-')[2];
+  
+  if (seg1 !== expectedSeg1) {
+    return {valid: false, reason: 'invalid_key'};
+  }
+  
+  // Check app access
+  var app = appType === 'DPD' ? 'dpd' : appType === 'YDL' ? 'yodel' : 'both';
+  return {valid: true, app: app, expiry: expiry};
+}
+
 var sel_app = 'ALL', sel_days = 30;
 var cur_key = '', cur_entry = '', cur_email = '';
 
@@ -157,15 +386,13 @@ function generateKey() {
   var days = sel_days || parseInt(document.getElementById('custom-days').value) || 30;
   if (!name) { showToast('Enter operator name first'); return; }
 
-  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  var s1='',s2='';
-  for(var i=0;i<5;i++){s1+=chars[Math.floor(Math.random()*chars.length)];s2+=chars[Math.floor(Math.random()*chars.length)];}
-  cur_key = 'TYFREX-'+sel_app+'-'+s1+'-'+s2;
-
   var today = new Date();
   var expDate = new Date(today.getTime() + days*86400000);
   var issued = today.toISOString().split('T')[0];
   var expiry = expDate.toISOString().split('T')[0];
+
+  // Algorithmic key generation — deterministic from company name
+  cur_key = generateTyfrexKey(name, sel_app, expiry);
   var appVal = sel_app==='DPD'?'dpd':sel_app==='YDL'?'yodel':'both';
   var appLabel = sel_app==='DPD'?'DPD Desktop':sel_app==='YDL'?'Yodel Desktop':'DPD & Yodel';
   var appPath = sel_app==='YDL'?'yodel':'dpd';

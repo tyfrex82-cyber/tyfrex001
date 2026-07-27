@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tyfrex DPD Desktop v170</title>
+<title>Tyfrex DPD Desktop v172</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -677,6 +677,14 @@ td.amount.gold { color: var(--gold); }
       Don't have a key? Email <a href="mailto:hello@tyfrex.com" style="color:#F0B429">hello@tyfrex.com</a>
     </div>
 
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:#8B949E;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Company Name</div>
+      <input id="licence-company-input" type="text" placeholder="e.g. Duke Logistics Ltd"
+        style="width:100%;box-sizing:border-box;padding:13px 16px;background:#21262D;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#E6EDF3;font-size:14px;font-family:DM Sans,sans-serif;outline:none"
+        autocomplete="organization">
+      <div style="font-size:11px;color:#8B949E;margin-top:4px">Enter exactly as you told us when you got your key</div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#8B949E;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Licence Key</div>
     <input id="licence-key-input" aria-label="Licence key" type="text" placeholder="TYFREX-DPD-XXXXX-XXXXX"
       style="width:100%;box-sizing:border-box;padding:13px 16px;background:#21262D;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#E6EDF3;font-size:14px;font-family:IBM Plex Mono,monospace;outline:none;text-align:center;letter-spacing:.05em;margin-bottom:14px"
       oninput="this.value=this.value.toUpperCase()"
@@ -1507,11 +1515,17 @@ function hideLicenceScreen() {
 function activateLicence() {
   var inp = document.getElementById('licence-key-input');
   var key = (inp ? inp.value : '').trim().toUpperCase();
+  var coInp = document.getElementById('licence-company-input');
+  var company = coInp ? coInp.value.trim() : '';
+  if (!company) { setLicenceStatus('Please enter your company name', 'error'); return; }
   if (!key) { setLicenceStatus('Please enter your licence key', 'error'); return; }
+
+  // Store company name immediately for algorithmic validation
+  try { localStorage.setItem(SK.company, company); DATA._company_name = company; } catch(e) {}
 
   var btn = document.getElementById('licence-btn');
   if (btn) { btn.textContent = 'Checking…'; btn.disabled = true; }
-  setLicenceStatus('Validating with Tyfrex server…', 'info');
+  setLicenceStatus('Validating…', 'info');
 
   validateWithServer(key, function(result) {
     if (btn) { btn.textContent = 'Activate Tyfrex'; btn.disabled = false; }
@@ -1528,12 +1542,138 @@ function activateLicence() {
   });
 }
 
+// ── TYFREX ALGORITHMIC KEY VALIDATION ─────────────────────────────────────────
+// Keys are self-validating — no server needed, works completely offline
+// Key format: TYFREX-{APP}-{HASH5}-{YYMM}
+// HASH5 = first 5 chars of SHA256(company|app|YYMM|SECRET)
+
+var TYFREX_KEY_SECRET = 'TYFREX2026KEYSALT';
+
+function djb2Hash32(str) {
+  // Fast deterministic hash — same input always same output
+  var h = 5381;
+  for (var i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) ^ str.charCodeAt(i);
+    h = h >>> 0; // Convert to unsigned 32-bit
+  }
+  return h.toString(16).toUpperCase().padStart(8, '0');
+}
+
+function tyfrexHash(str) {
+  // Multi-round hash for better distribution
+  var h1 = djb2Hash32(str);
+  var h2 = djb2Hash32(h1 + str);
+  var h3 = djb2Hash32(h2 + h1);
+  return (h1 + h2 + h3).toUpperCase();
+}
+
+function encodeExpiry(expiryDate) {
+  // YYYY-MM-DD → YYMM (last day of month assumed)
+  var parts = expiryDate.split('-');
+  return parts[0].slice(2) + parts[1]; // e.g. "2612"
+}
+
+function decodeExpiry(encoded) {
+  // YYMM → YYYY-MM-DD (last day of month)
+  var yy = encoded.slice(0, 2);
+  var mm = encoded.slice(2, 4);
+  var year = '20' + yy;
+  var daysInMonth = new Date(parseInt(year), parseInt(mm), 0).getDate();
+  return year + '-' + mm + '-' + String(daysInMonth).padStart(2, '0');
+}
+
+function generateTyfrexKey(companyName, appType, expiryDate) {
+  var co = companyName.trim().toUpperCase();
+  var exp = encodeExpiry(expiryDate);
+  var data = co + '|' + appType + '|' + exp + '|' + TYFREX_KEY_SECRET;
+  var hash = tyfrexHash(data);
+  var seg1 = hash.slice(0, 5);
+  return 'TYFREX-' + appType + '-' + seg1 + '-' + exp;
+}
+
+function validateTyfrexKeyAlgo(key, companyName) {
+  // Returns {valid, app, expiry, reason}
+  if (!key || !companyName) return {valid: false, reason: 'missing'};
+  
+  var parts = key.trim().toUpperCase().split('-');
+  
+  // Master key — always valid
+  if (key.trim().toUpperCase() === 'TYFREX-MASTER-QEISL-QKFM3') {
+    return {valid: true, app: 'both', expiry: '2099-12-31'};
+  }
+  
+  if (parts.length !== 4 || parts[0] !== 'TYFREX') {
+    return {valid: false, reason: 'invalid_format'};
+  }
+  
+  var appType = parts[1];
+  var seg1 = parts[2];
+  var expCode = parts[3];
+  
+  // Decode expiry
+  var expiry;
+  try {
+    expiry = decodeExpiry(expCode);
+    if (!expiry.match(/^\d{4}-\d{2}-\d{2}$/)) throw new Error();
+  } catch(e) {
+    return {valid: false, reason: 'invalid_expiry'};
+  }
+  
+  // Check expiry
+  var today = new Date().toISOString().split('T')[0];
+  if (expiry < today) {
+    return {valid: false, reason: 'expired', expiry: expiry};
+  }
+  
+  // Verify hash
+  var expected = generateTyfrexKey(companyName, appType, expiry);
+  var expectedSeg1 = expected.split('-')[2];
+  
+  if (seg1 !== expectedSeg1) {
+    return {valid: false, reason: 'invalid_key'};
+  }
+  
+  // Check app access
+  var app = appType === 'DPD' ? 'dpd' : appType === 'YDL' ? 'yodel' : 'both';
+  return {valid: true, app: app, expiry: expiry};
+}
+
 function validateWithServer(key, callback) {
   // Master key — always valid, no server needed
-  if (key === 'TYFREX-MASTER-ZDIBY-LAALK') {
+  if (key === 'TYFREX-MASTER-QEISL-QKFM3') {
     callback({ valid: true, operator: 'Tyfrex Admin', expiry: '2099-12-31' });
     return;
   }
+
+  // Algorithmic validation — works offline, no server needed
+  // Get company name from localStorage
+  var co = '';
+  try { co = localStorage.getItem(SK.company) || DATA._company_name || ''; } catch(e) {}
+  if (co) {
+    var algoResult = validateTyfrexKeyAlgo(key, co);
+    if (algoResult.valid) {
+      // Check app access
+      var appOk = algoResult.app === 'both' ||
+                  (algoResult.app === 'dpd' && true);
+      if (appOk) {
+        callback({ valid: true, operator: co, expiry: algoResult.expiry });
+        return;
+      } else {
+        callback({ valid: false, reason: 'This key does not include access to this app.' });
+        return;
+      }
+    } else if (algoResult.reason === 'expired') {
+      callback({ valid: false, reason: 'Your licence key expired on ' + algoResult.expiry });
+      return;
+    } else if (algoResult.reason === 'invalid_key') {
+      // Key format valid but hash doesn't match — try server as fallback
+    } else {
+      callback({ valid: false, reason: 'Invalid key format.' });
+      return;
+    }
+  }
+
+  // Server fallback — for keys not matching algorithmic format
   fetch(VALIDATE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

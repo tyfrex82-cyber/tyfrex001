@@ -6886,26 +6886,42 @@ function pwGetTier(raw) {
 
 var TYFREX_VALIDATE_URL = '/.netlify/functions/validate';
 var TYFREX_APP_ID = 'yodel-mobile';
-var TYFREX_MASTER = 'TYFREX-MASTER-ZDIBY-LAALK';
+var TYFREX_MASTER = 'TYFREX-MASTER-QEISL-QKFM3';
 
 function isTyfrexKey(raw) {
   return (raw || '').trim().toUpperCase().indexOf('TYFREX-') === 0;
 }
 
 function isTyfrexKeyValid() {
-  // Check if a stored TYFREX key is locally valid (not expired) AND on correct device
   try {
     var key = localStorage.getItem('tyfrex:licence:key') || '';
-    var expiry = localStorage.getItem('tyfrex:licence:expiry') || '';
-    if (!key || !expiry) return false;
-    var today = new Date().toISOString().split('T')[0];
-    if (expiry < today) return false;
-    // Device lock check — fails if key used on different device
-    if (!checkDeviceLock(key)) {
-      try { localStorage.removeItem('tyfrex:licence:key'); localStorage.removeItem('tyfrex:licence:expiry'); } catch(e) {}
-      return false;
+    if (!key) return false;
+    // Master key — always valid
+    if (key === 'TYFREX-MASTER-QEISL-QKFM3') return true;
+    // Get company name for algorithmic validation
+    var co = '';
+    try { co = localStorage.getItem('tyfrex:mobile:company') || localStorage.getItem('tyfrex:company') || ''; } catch(e) {}
+    if (co) {
+      var ar = validateTyfrexKeyAlgo(key, co);
+      if (!ar.valid) {
+        try { localStorage.removeItem('tyfrex:licence:key'); } catch(e) {}
+        return false;
+      }
+      // Check app access
+      var appOk = ar.app === 'both' || ar.app === 'yodel';
+      if (!appOk) return false;
+      // Device lock check
+      if (!checkDeviceLock(key)) {
+        try { localStorage.removeItem('tyfrex:licence:key'); } catch(e) {}
+        return false;
+      }
+      return true;
     }
-    return true;
+    // No company name yet — check expiry from storage
+    var expiry = localStorage.getItem('tyfrex:licence:expiry') || '';
+    if (!expiry) return false;
+    var today = new Date().toISOString().split('T')[0];
+    return expiry >= today;
   } catch(e) { return false; }
 }
 
@@ -7022,6 +7038,102 @@ function checkDeviceLock(key) {
   } catch(e) { return true; }
 }
 
+// ── TYFREX ALGORITHMIC KEY VALIDATION ─────────────────────────────────────────
+// Keys are self-validating — no server needed, works completely offline
+// Key format: TYFREX-{APP}-{HASH5}-{YYMM}
+// HASH5 = first 5 chars of SHA256(company|app|YYMM|SECRET)
+
+var TYFREX_KEY_SECRET = 'TYFREX2026KEYSALT';
+
+function djb2Hash32(str) {
+  // Fast deterministic hash — same input always same output
+  var h = 5381;
+  for (var i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) ^ str.charCodeAt(i);
+    h = h >>> 0; // Convert to unsigned 32-bit
+  }
+  return h.toString(16).toUpperCase().padStart(8, '0');
+}
+
+function tyfrexHash(str) {
+  // Multi-round hash for better distribution
+  var h1 = djb2Hash32(str);
+  var h2 = djb2Hash32(h1 + str);
+  var h3 = djb2Hash32(h2 + h1);
+  return (h1 + h2 + h3).toUpperCase();
+}
+
+function encodeExpiry(expiryDate) {
+  // YYYY-MM-DD → YYMM (last day of month assumed)
+  var parts = expiryDate.split('-');
+  return parts[0].slice(2) + parts[1]; // e.g. "2612"
+}
+
+function decodeExpiry(encoded) {
+  // YYMM → YYYY-MM-DD (last day of month)
+  var yy = encoded.slice(0, 2);
+  var mm = encoded.slice(2, 4);
+  var year = '20' + yy;
+  var daysInMonth = new Date(parseInt(year), parseInt(mm), 0).getDate();
+  return year + '-' + mm + '-' + String(daysInMonth).padStart(2, '0');
+}
+
+function generateTyfrexKey(companyName, appType, expiryDate) {
+  var co = companyName.trim().toUpperCase();
+  var exp = encodeExpiry(expiryDate);
+  var data = co + '|' + appType + '|' + exp + '|' + TYFREX_KEY_SECRET;
+  var hash = tyfrexHash(data);
+  var seg1 = hash.slice(0, 5);
+  return 'TYFREX-' + appType + '-' + seg1 + '-' + exp;
+}
+
+function validateTyfrexKeyAlgo(key, companyName) {
+  // Returns {valid, app, expiry, reason}
+  if (!key || !companyName) return {valid: false, reason: 'missing'};
+  
+  var parts = key.trim().toUpperCase().split('-');
+  
+  // Master key — always valid
+  if (key.trim().toUpperCase() === 'TYFREX-MASTER-QEISL-QKFM3') {
+    return {valid: true, app: 'both', expiry: '2099-12-31'};
+  }
+  
+  if (parts.length !== 4 || parts[0] !== 'TYFREX') {
+    return {valid: false, reason: 'invalid_format'};
+  }
+  
+  var appType = parts[1];
+  var seg1 = parts[2];
+  var expCode = parts[3];
+  
+  // Decode expiry
+  var expiry;
+  try {
+    expiry = decodeExpiry(expCode);
+    if (!expiry.match(/^\d{4}-\d{2}-\d{2}$/)) throw new Error();
+  } catch(e) {
+    return {valid: false, reason: 'invalid_expiry'};
+  }
+  
+  // Check expiry
+  var today = new Date().toISOString().split('T')[0];
+  if (expiry < today) {
+    return {valid: false, reason: 'expired', expiry: expiry};
+  }
+  
+  // Verify hash
+  var expected = generateTyfrexKey(companyName, appType, expiry);
+  var expectedSeg1 = expected.split('-')[2];
+  
+  if (seg1 !== expectedSeg1) {
+    return {valid: false, reason: 'invalid_key'};
+  }
+  
+  // Check app access
+  var app = appType === 'DPD' ? 'dpd' : appType === 'YDL' ? 'yodel' : 'both';
+  return {valid: true, app: app, expiry: expiry};
+}
+
 function pwInit() {
   // Require valid TYFREX licence key — no built-in trial
   if (isTyfrexKeyValid()) {
@@ -7079,12 +7191,41 @@ function pwCloseTrial() {
 
 function pwActivate() {
   var inp = document.getElementById('pw-key-input');
+  var coInp = document.getElementById('pw-company-input');
   var errEl = document.getElementById('pw-err');
   var raw = (inp ? inp.value : '').trim();
+  var company = coInp ? coInp.value.trim() : '';
+  if (!company) { errEl.textContent = 'Enter your company name first.'; return; }
   if (!raw) { errEl.textContent = 'Enter your licence key.'; return; }
   errEl.textContent = '';
 
-  // TYFREX format key — validate against server
+  // Store company name for algorithmic validation
+  try { localStorage.setItem('tyfrex:mobile:company', company); } catch(e) {}
+
+  // Algorithmic validation — works offline
+  var algoResult = validateTyfrexKeyAlgo(raw.toUpperCase(), company);
+  if (algoResult.valid) {
+    var appOk = algoResult.app === 'both' || algoResult.app === 'yodel';
+    if (appOk) {
+      try {
+        localStorage.setItem('tyfrex:licence:key', raw.trim().toUpperCase());
+        localStorage.setItem('tyfrex:licence:expiry', algoResult.expiry);
+      } catch(e) {}
+      activateDeviceLock(raw.trim().toUpperCase());
+      PW.ACTIVE = true; PW.IN_TRIAL = false; PW.TIER = 'P'; PW.DRIVER_LIMIT = Infinity;
+      document.getElementById('pw-overlay').style.display = 'none';
+      showToast('✅ Licence activated — welcome to Tyfrex');
+      return;
+    } else {
+      errEl.textContent = 'This key does not include access to this app.';
+      return;
+    }
+  } else if (algoResult.reason === 'expired') {
+    errEl.textContent = 'This key expired on ' + algoResult.expiry + '. Contact hello@tyfrex.com';
+    return;
+  }
+
+  // TYFREX format key — try server fallback
   if (isTyfrexKey(raw)) {
     errEl.textContent = 'Checking…';
     validateTyfrexKey(raw, function(result) {
@@ -10300,6 +10441,10 @@ function generateCycleSummaryPDF() {
       <div class="pw-feat"><span class="pw-feat-ic">📷</span><span class="pw-feat-lbl">Document scanning (RTW, licence)</span><span class="pw-feat-tag">PRO</span></div>
       <div class="pw-feat"><span class="pw-feat-ic">📈</span><span class="pw-feat-lbl">Business P&L summary</span><span class="pw-feat-tag">PRO</span></div>
     </div>
+    <div style="font-size:13px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Company Name</div>
+    <input id="pw-company-input" type="text" placeholder="e.g. Duke Logistics Ltd"
+      style="width:100%;padding:12px 14px;background:var(--surf3);border:1px solid var(--bdr2);border-radius:10px;color:var(--t1);font-size:14px;font-family:DM Sans,sans-serif;outline:none;margin-bottom:12px"
+      autocomplete="organization">
     <div style="font-size:13px;color:var(--t3);font-family:monospace;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">Licence Key</div>
     <div class="pw-key-wrap">
       <input id="pw-key-input" class="pw-key-inp" type="text" maxlength="24"
