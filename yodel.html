@@ -6893,13 +6893,19 @@ function isTyfrexKey(raw) {
 }
 
 function isTyfrexKeyValid() {
-  // Check if a stored TYFREX key is locally valid (not expired)
+  // Check if a stored TYFREX key is locally valid (not expired) AND on correct device
   try {
     var key = localStorage.getItem('tyfrex:licence:key') || '';
     var expiry = localStorage.getItem('tyfrex:licence:expiry') || '';
     if (!key || !expiry) return false;
     var today = new Date().toISOString().split('T')[0];
-    return expiry >= today;
+    if (expiry < today) return false;
+    // Device lock check — fails if key used on different device
+    if (!checkDeviceLock(key)) {
+      try { localStorage.removeItem('tyfrex:licence:key'); localStorage.removeItem('tyfrex:licence:expiry'); } catch(e) {}
+      return false;
+    }
+    return true;
   } catch(e) { return false; }
 }
 
@@ -6957,34 +6963,72 @@ function pwStripKey(raw) {
   return raw.toUpperCase().replace(/[-\s]/g, '').replace(/[^A-Z0-9]/g, '');
 }
 
+
+// ── DEVICE LOCK SYSTEM ────────────────────────────────────────────────────────
+var DEVICE_LOCK_SECRET = 'TYFREX2026SALT';
+var DEVICE_LOCK_KEY = 'tyfrex:device:lock';
+
+function dlHash(str) {
+  var h = 5381;
+  for (var i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) + str.charCodeAt(i);
+    h = h & h;
+  }
+  return Math.abs(h).toString(16).toUpperCase().padStart(8, '0');
+}
+
+function getDeviceChars() {
+  return [screen.width, screen.height, navigator.language,
+    navigator.hardwareConcurrency || 4,
+    new Date().getTimezoneOffset(),
+    navigator.platform || 'web'].join('|');
+}
+
+function getBirthCert(key, ad, dc) {
+  return dlHash(key + '|' + ad + '|' + dc + '|' + DEVICE_LOCK_SECRET);
+}
+
+function getMonthlySeed(key, bc) {
+  var now = new Date();
+  return dlHash(key + '|' + bc + '|' + now.getFullYear() + '-' + now.getMonth() + '|' + DEVICE_LOCK_SECRET);
+}
+
+function activateDeviceLock(key) {
+  try {
+    var ex = JSON.parse(localStorage.getItem(DEVICE_LOCK_KEY) || 'null');
+    if (ex && ex.key === key) return;
+    var ad = new Date().toISOString().split('T')[0];
+    var dc = getDeviceChars();
+    var bc = getBirthCert(key, ad, dc);
+    localStorage.setItem(DEVICE_LOCK_KEY, JSON.stringify({
+      key: key, birthCert: bc, activationDate: ad,
+      monthlySeed: getMonthlySeed(key, bc),
+      seedMonth: new Date().getFullYear() + '-' + new Date().getMonth()
+    }));
+  } catch(e) {}
+}
+
+function checkDeviceLock(key) {
+  try {
+    var lock = JSON.parse(localStorage.getItem(DEVICE_LOCK_KEY) || 'null');
+    if (!lock || lock.key !== key) { activateDeviceLock(key); return true; }
+    var ym = new Date().getFullYear() + '-' + new Date().getMonth();
+    if (lock.seedMonth !== ym) {
+      lock.monthlySeed = getMonthlySeed(key, lock.birthCert);
+      lock.seedMonth = ym;
+      localStorage.setItem(DEVICE_LOCK_KEY, JSON.stringify(lock));
+    }
+    return getMonthlySeed(key, lock.birthCert) === lock.monthlySeed;
+  } catch(e) { return true; }
+}
+
 function pwInit() {
-  var stored = '';
-  try { stored = localStorage.getItem(PW.KEY_LS) || ''; } catch(e) {}
+  // Require valid TYFREX licence key — no built-in trial
   if (isTyfrexKeyValid()) {
     PW.ACTIVE = true; PW.IN_TRIAL = false; PW.TIER = 'P'; PW.DRIVER_LIMIT = Infinity;
-    return;
+  } else {
+    PW.ACTIVE = false; PW.IN_TRIAL = false; PW.TIER = 'S'; PW.DRIVER_LIMIT = 0;
   }
-  if (stored && pwValidateKey(stored)) {
-    PW.ACTIVE       = true;
-    PW.IN_TRIAL     = false;
-    PW.TIER         = pwGetTier(stored);
-    PW.DRIVER_LIMIT = (PW.TIER === 'P') ? Infinity : 15;
-    return;
-  }
-  var trialStart = 0;
-  try { trialStart = parseInt(localStorage.getItem(PW.TRIAL_LS)) || 0; } catch(e) {}
-  if (!trialStart || (Date.now() - trialStart) > (PW.TRIAL_DAYS * 86400000)) {
-    trialStart = Date.now();
-    try { localStorage.setItem(PW.TRIAL_LS, String(trialStart)); } catch(e) {}
-  }
-  var elapsed  = Date.now() - trialStart;
-  var daysUsed = elapsed / 86400000;
-  var daysLeft = Math.max(0, Math.ceil(PW.TRIAL_DAYS - daysUsed));
-  PW.TRIAL_REM    = daysLeft;
-  PW.IN_TRIAL     = daysLeft > 0;
-  PW.ACTIVE       = false;
-  PW.TIER         = 'S';
-  PW.DRIVER_LIMIT = 15;
 }
 
 function pwCheck(feature) {
@@ -7400,6 +7444,14 @@ function showToast(msg) {
   buildToday();
   setTimeout(()=>buildUrgFields('van_off'),200);
 
+  // Show paywall immediately if no valid licence
+  // Use requestAnimationFrame to ensure DOM is ready
+  if (!PW.ACTIVE) {
+    requestAnimationFrame(function() {
+      var overlay = document.getElementById('pw-overlay');
+      if (overlay) overlay.style.display = '';
+    });
+  }
   // Update API key status indicator
   var keyEl = document.getElementById('api-key-status');
   if (keyEl) {

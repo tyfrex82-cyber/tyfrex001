@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tyfrex Key Generator</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:#0D1117; color:#E6EDF3; font-family:'DM Sans',system-ui,sans-serif; min-height:100vh; padding:20px 16px 60px; }
+h1 { font-size:22px; font-weight:900; color:#F0B429; margin-bottom:2px; }
+.sub { font-size:12px; color:#8B949E; margin-bottom:20px; }
+.card { background:#161B22; border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:18px; margin-bottom:14px; }
+.label { font-size:11px; font-weight:700; color:#8B949E; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; margin-top:14px; }
+.label:first-child { margin-top:0; }
+.field { width:100%; padding:13px 14px; background:#0D1117; border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#E6EDF3; font-size:16px; font-family:inherit; outline:none; -webkit-appearance:none; }
+.field:focus { border-color:#F0B429; }
+.seg-group { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
+.seg-btn { padding:11px 6px; border:1px solid rgba(255,255,255,.12); border-radius:9px; background:transparent; color:#8B949E; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.seg-btn.active { border-color:#F0B429; color:#F0B429; background:rgba(240,180,41,.08); }
+.full { grid-column:1/-1; }
+.gen-btn { width:100%; padding:16px; border:none; border-radius:10px; background:linear-gradient(135deg,#F0B429,#C8922A); color:#05080F; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:16px; }
+.divider { border:none; border-top:1px solid rgba(255,255,255,.07); margin:16px 0; }
+.key-box { background:#0D1117; border:2px solid rgba(240,180,41,.4); border-radius:12px; padding:16px; text-align:center; margin-bottom:12px; }
+.key-text { font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:700; color:#F0B429; letter-spacing:.04em; word-break:break-all; line-height:1.6; }
+.action-btn { width:100%; padding:14px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; margin-bottom:8px; border:none; }
+.btn-copy { background:rgba(240,180,41,.12); border:1px solid rgba(240,180,41,.3); color:#F0B429; }
+.btn-wa { background:rgba(37,211,102,.1); border:1px solid rgba(37,211,102,.3); color:#25D366; }
+.btn-email { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#E6EDF3; }
+.btn-github { width:100%; padding:15px; border:none; border-radius:10px; background:linear-gradient(135deg,#238636,#196127); color:#fff; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-bottom:8px; }
+.btn-github:disabled { opacity:.4; cursor:not-allowed; }
+.btn-backup { width:100%; padding:13px; border:1px solid rgba(99,102,241,.3); border-radius:10px; background:rgba(99,102,241,.08); color:#818cf8; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+.meta-box { background:#0D1117; border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+.meta-row { display:flex; justify-content:space-between; font-size:12px; padding:3px 0; }
+.meta-row span { color:#8B949E; }
+.meta-row strong { color:#E6EDF3; font-weight:600; }
+.save-status { font-size:12px; color:#8B949E; text-align:center; min-height:18px; margin-bottom:8px; }
+.gh-status { font-size:12px; padding:8px 12px; border-radius:8px; margin-bottom:12px; }
+.gh-ok { background:rgba(63,185,80,.1); border:1px solid rgba(63,185,80,.2); color:#3fb950; }
+.gh-no { background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.2); color:#f87171; }
+.steps { font-size:12px; color:#8B949E; line-height:1.8; margin-bottom:10px; }
+.steps a { color:#F0B429; }
+.token-input { font-family:'IBM Plex Mono',monospace; font-size:13px; margin-top:6px; margin-bottom:10px; }
+.connect-btn { width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#F0B429,#C8922A); color:#05080F; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+.ghost-btn { width:100%; padding:11px; border:1px solid rgba(255,255,255,.1); border-radius:9px; background:transparent; color:#8B949E; font-size:13px; cursor:pointer; font-family:inherit; margin-top:8px; }
+.toast { position:fixed; bottom:20px; left:16px; right:16px; background:#1C2128; border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:12px 16px; font-size:13px; color:#E6EDF3; opacity:0; transition:opacity .2s; pointer-events:none; text-align:center; z-index:999; }
+.toast.show { opacity:1; }
+.history-item { background:#0D1117; border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.hkey { font-family:'IBM Plex Mono',monospace; font-size:11px; color:#F0B429; word-break:break-all; flex:1; }
+.hmeta { font-size:10px; color:#8B949E; margin-top:2px; }
+.hcopy { padding:6px 10px; border:1px solid rgba(240,180,41,.2); border-radius:7px; background:transparent; color:#F0B429; font-size:11px; cursor:pointer; flex-shrink:0; }
+</style>
+</head>
+<body>
+<h1>TX Key Generator</h1>
+<div class="sub">Tyfrex — Your business. Your payroll. Your device.</div>
+
+<!-- GITHUB -->
+
+<!-- MY EMAIL SETTINGS -->
+<div class="card" style="margin-bottom:14px">
+  <div class="label">My Email (silent backup copy of every key)</div>
+  <input class="field" id="my-email" type="email" placeholder="your@email.com" style="margin-top:6px" oninput="saveMyEmail()">
+  <div style="font-size:11px;color:#8B949E;margin-top:4px">Saved automatically — every key generated sends a copy to this address</div>
+</div>
+
+<!-- GENERATOR -->
+<div class="card">
+  <div class="label">Operator Name</div>
+  <input class="field" id="op-name" type="text" placeholder="e.g. Duke Logistics Ltd" autocomplete="off" autocapitalize="words" style="margin-top:6px">
+
+  <div class="label">App Access</div>
+  <div class="seg-group">
+    <button class="seg-btn" onclick="setApp('DPD',this)">DPD Only</button>
+    <button class="seg-btn" onclick="setApp('YDL',this)">Yodel Only</button>
+    <button class="seg-btn full active" onclick="setApp('ALL',this)">Both DPD &amp; Yodel</button>
+  </div>
+
+  <div class="label">Duration</div>
+  <div class="seg-group">
+    <button class="seg-btn active" onclick="setDays(30,this)">30 days</button>
+    <button class="seg-btn" onclick="setDays(90,this)">90 days</button>
+    <button class="seg-btn" onclick="setDays(365,this)">12 months</button>
+    <button class="seg-btn" onclick="setDays(0,this)">Custom</button>
+  </div>
+  <input class="field" id="custom-days" type="number" placeholder="Number of days" style="display:none;margin-top:8px" min="1" max="730" inputmode="numeric">
+
+  <button class="gen-btn" onclick="generateKey()">⚡ Generate Key</button>
+</div>
+
+<!-- RESULT -->
+<div id="result" style="display:none">
+  <div class="card">
+    <div style="font-size:11px;color:#8B949E;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Licence Key</div>
+    <div class="key-box">
+      <div class="key-text" id="key-display"></div>
+    </div>
+
+    <button class="action-btn btn-copy" onclick="copyKey()">📋 Copy Key</button>
+    <button class="action-btn btn-wa" onclick="sendWhatsApp()">💬 Send via WhatsApp</button>
+    <button class="action-btn btn-email" onclick="copyEmail()">📧 Copy Email Message</button>
+
+    <div class="divider"></div>
+
+    <div class="meta-box">
+      <div class="meta-row"><span>Operator</span><strong id="m-name"></strong></div>
+      <div class="meta-row"><span>App</span><strong id="m-app"></strong></div>
+      <div class="meta-row"><span>Issued</span><strong id="m-issued"></strong></div>
+      <div class="meta-row"><span>Expires</span><strong id="m-expiry"></strong></div>
+    </div>
+
+    <button class="btn-backup" onclick="downloadBackup()">📥 Download Backup File</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="history-section" style="display:none;margin-top:8px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;color:#8B949E;text-transform:uppercase;letter-spacing:.08em">Keys Register</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button style="background:none;border:1px solid rgba(240,180,41,.3);border-radius:6px;color:#F0B429;font-size:11px;cursor:pointer;padding:4px 8px" onclick="exportKeysBackup()">📥 Backup</button>
+      <label style="background:none;border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#8B949E;font-size:11px;cursor:pointer;padding:4px 8px">
+        📂 Restore<input type="file" accept=".backup,.json" style="display:none" onchange="restoreKeysBackup(this)">
+      </label>
+      <button style="background:none;border:none;color:#8B949E;font-size:11px;cursor:pointer" onclick="clearHistory()">Clear</button>
+    </div>
+  </div>
+  <div id="history-list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var sel_app = 'ALL', sel_days = 30;
+var cur_key = '', cur_entry = '', cur_email = '';
+
+var cur_meta = {};
+
+function setApp(a, btn) {
+  sel_app = a;
+  document.querySelectorAll('.seg-btn').forEach(function(b){
+    if(b.textContent.includes('DPD') || b.textContent.includes('Yodel') || b.textContent.includes('Both')) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+}
+
+function setDays(d, btn) {
+  sel_days = d;
+  document.querySelectorAll('.seg-btn').forEach(function(b){
+    if(['30 days','90 days','12 months','Custom'].indexOf(b.textContent) >= 0) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  document.getElementById('custom-days').style.display = d === 0 ? '' : 'none';
+}
+
+function generateKey() {
+  var name = document.getElementById('op-name').value.trim();
+  var days = sel_days || parseInt(document.getElementById('custom-days').value) || 30;
+  if (!name) { showToast('Enter operator name first'); return; }
+
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  var s1='',s2='';
+  for(var i=0;i<5;i++){s1+=chars[Math.floor(Math.random()*chars.length)];s2+=chars[Math.floor(Math.random()*chars.length)];}
+  cur_key = 'TYFREX-'+sel_app+'-'+s1+'-'+s2;
+
+  var today = new Date();
+  var expDate = new Date(today.getTime() + days*86400000);
+  var issued = today.toISOString().split('T')[0];
+  var expiry = expDate.toISOString().split('T')[0];
+  var appVal = sel_app==='DPD'?'dpd':sel_app==='YDL'?'yodel':'both';
+  var appLabel = sel_app==='DPD'?'DPD Desktop':sel_app==='YDL'?'Yodel Desktop':'DPD & Yodel';
+  var appPath = sel_app==='YDL'?'yodel':'dpd';
+
+  cur_meta = {name:name, app:appLabel, appVal:appVal, appPath:appPath, issued:issued, expiry:expiry, days:days};
+
+  cur_entry = '"'+cur_key+'": {\n  "operator": "'+name+'",\n  "app": "'+appVal+'",\n  "issued": "'+issued+'",\n  "expiry": "'+expiry+'",\n  "active": true\n},';
+
+  cur_email = [
+    'Hi,',
+    '',
+    'Welcome to Tyfrex.',
+    '',
+    'Your business. Your payroll. Your device.',
+    '',
+    'We solve your payroll headache.',
+    '',
+    'Upload your '+(sel_app==='YDL'?'Yodel invoice PDF':'DPD CSV')+', calculate driver pay, send payslips via WhatsApp — done in under 10 minutes.',
+    '',
+    'You already know your numbers. Tyfrex keeps them confidential. Your driver pay rates, your margins, your operation — only you alone.',
+    '',
+    'Try it yourself — disconnect your internet after entering your key. Tyfrex still works. Because it does not need us.',
+    '',
+    '30 days free.',
+    '',
+    'Your trial key: '+cur_key,
+    '',
+    '➡ Get started here: https://tyfrex.netlify.app/'+appPath+'-desktop.html',
+    '',
+    'Step 1 — Enter your trial key when prompted',
+    'Step 2 — Enter your company name and settings',
+    'Step 3 — Upload your '+(sel_app==='YDL'?'Yodel invoice from your email':'DPD CSV from the franchise portal'),
+    'Step 4 — Review driver pay and make any adjustments',
+    'Step 5 — Send payslips to drivers via WhatsApp',
+    'Step 6 — Download your Excel record and mark all paid',
+    'Step 7 — Click New Cycle — ready for next week',
+    '',
+    'Any questions, reply to this email.',
+    '',
+    'Tyfrex',
+    'hello@tyfrex.com'
+  ].join('\n');
+
+  document.getElementById('key-display').textContent = cur_key;
+  document.getElementById('m-name').textContent = name;
+  document.getElementById('m-app').textContent = appLabel;
+  document.getElementById('m-issued').textContent = issued;
+  document.getElementById('m-expiry').textContent = expiry + ' (' + days + ' days)';
+  document.getElementById('save-status').textContent = '';
+  
+  
+  document.getElementById('result').style.display = '';
+  document.getElementById('result').scrollIntoView({behavior:'smooth'});
+
+  saveHistory({
+    key: cur_key,
+    name: name,
+    app: appLabel,
+    appVal: cur_meta.appVal,
+    expiry: expiry,
+    issued: issued,
+    validate_entry: cur_entry,
+    generated_at: new Date().toISOString()
+  });
+  renderHistory();
+
+  // Auto-actions after key generation
+  setTimeout(function() {
+    autoDownloadBackup(cur_key, name, appVal, issued, expiry);
+    autoOpenOperatorEmail(name, appPath);
+    autoEmailMyself(cur_key, name, appLabel, issued, expiry);
+    exportKeysBackup(); // Silent auto-backup of full register
+  }, 600);
+}
+
+function copyKey() {
+  navigator.clipboard.writeText(cur_key).then(function(){ showToast('✅ Key copied'); });
+}
+
+function autoDownloadBackup(key, name, appVal, issued, expiry) {
+  // Auto-download backup JSON — silent record of every key issued
+  var data = {
+    key: key,
+    validate_js_entry: ['"'+key+'": {', '  "operator": "'+name+'",', '  "app": "'+appVal+'",', '  "issued": "'+issued+'",', '  "expiry": "'+expiry+'",', '  "active": true', '},'].join('\n'),
+    operator: name,
+    app: appVal,
+    issued: issued,
+    expiry: expiry,
+    email_message: cur_email,
+    generated_at: new Date().toISOString()
+  };
+  try {
+    var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tyfrex-key-' + name.replace(/[^a-zA-Z0-9]/g,'_') + '-' + expiry + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(e) {}
+}
+
+function autoOpenOperatorEmail(name, appPath) {
+  // Auto-open email client with operator onboarding email pre-filled
+  try {
+    var subject = encodeURIComponent('Welcome to Tyfrex — Your business. Your payroll. Your device.');
+    var body = encodeURIComponent(cur_email);
+    window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
+  } catch(e) {}
+}
+
+function autoEmailMyself(key, name, appLabel, issued, expiry) {
+  // Send silent email to myself as backup record
+  var myEmail = localStorage.getItem('tyfrex:kg:myemail') || '';
+  if (!myEmail) return;
+  try {
+    var subject = encodeURIComponent('[Tyfrex] New key issued: ' + name);
+    var bodyLines = [
+      'New licence key issued', '',
+      'Operator: ' + name,
+      'App: ' + appLabel,
+      'Key: ' + key,
+      'Issued: ' + issued,
+      'Expires: ' + expiry,
+      '', 'validate.js entry:', cur_entry
+    ];
+    var body = encodeURIComponent(bodyLines.join('\n'));
+    var link = document.createElement('a');
+    link.href = 'mailto:' + myEmail + '?subject=' + subject + '&body=' + body;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch(e) {}
+}
+
+function sendWhatsApp() {
+  var lines = [
+    'Welcome to Tyfrex!',
+    '',
+    'Your licence key: ' + cur_key,
+    '',
+    'Get started: https://tyfrex.netlify.app/' + cur_meta.appPath + '-desktop.html',
+    '',
+    'Valid until ' + cur_meta.expiry,
+    '',
+    'Your business. Your payroll. Your device.'
+  ];
+  window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
+}
+
+function copyEmail() {
+  navigator.clipboard.writeText(cur_email).then(function(){ showToast('✅ Email copied'); });
+}
+
+function downloadBackup() {
+  var data = {
+    key: cur_key,
+    validate_js_entry: cur_entry,
+    operator: cur_meta.name,
+    app: cur_meta.appVal,
+    issued: cur_meta.issued,
+    expiry: cur_meta.expiry,
+    email_message: cur_email,
+    generated_at: new Date().toISOString()
+  };
+  var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tyfrex-key-' + cur_meta.name.replace(/[^a-zA-Z0-9]/g,'_') + '-' + cur_meta.expiry + '.json';
+  a.click();
+  showToast('✅ Backup downloaded');
+}
+
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+function saveHistory(e) {
+  try {
+    var h = JSON.parse(localStorage.getItem('tyfrex:kg:hist')||'[]');
+    h.unshift(e); if(h.length>500) h=h.slice(0,500); // Keep up to 500 keys
+    localStorage.setItem('tyfrex:kg:hist', JSON.stringify(h));
+  } catch(err){}
+}
+
+function exportKeysBackup() {
+  try {
+    var h = JSON.parse(localStorage.getItem('tyfrex:kg:hist')||'[]');
+    if (!h.length) { showToast('No keys to export'); return; }
+    var backup = {
+      type: 'tyfrex-keys-backup',
+      exported_at: new Date().toISOString(),
+      total_keys: h.length,
+      keys: h
+    };
+    var blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tyfrex-keys-' + new Date().toISOString().split('T')[0] + '.backup';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('✅ Keys backup downloaded (' + h.length + ' keys)');
+  } catch(e) { showToast('❌ Export failed'); }
+}
+
+function restoreKeysBackup(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var backup = JSON.parse(e.target.result);
+      if (backup.type !== 'tyfrex-keys-backup') throw new Error('Not a valid keys backup');
+      var existing = JSON.parse(localStorage.getItem('tyfrex:kg:hist')||'[]');
+      // Merge — deduplicate by key
+      var merged = backup.keys.concat(existing);
+      var seen = {};
+      merged = merged.filter(function(k) {
+        if (seen[k.key]) return false;
+        seen[k.key] = true;
+        return true;
+      });
+      localStorage.setItem('tyfrex:kg:hist', JSON.stringify(merged));
+      renderHistory();
+      showToast('✅ Restored ' + backup.keys.length + ' keys');
+    } catch(err) {
+      showToast('❌ Invalid backup file');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderHistory() {
+  try {
+    var h = JSON.parse(localStorage.getItem('tyfrex:kg:hist')||'[]');
+    if (!h.length) { document.getElementById('history-section').style.display='none'; return; }
+    document.getElementById('history-section').style.display='';
+    document.getElementById('history-list').innerHTML = h.map(function(e){
+      return '<div class="history-item"><div style="flex:1"><div class="hkey">'+e.key+'</div><div class="hmeta">'+e.name+' · '+e.app+' · expires '+e.expiry+'</div></div><button class="hcopy" onclick="navigator.clipboard.writeText(\''+e.key+'\').then(function(){showToast(\'✅ Copied\')})">Copy</button></div>';
+    }).join('');
+  } catch(err){}
+}
+
+function clearHistory() {
+  try{ localStorage.removeItem('tyfrex:kg:hist'); }catch(e){}
+  renderHistory();
+}
+
+// Init
+try {
+  var savedEmail = localStorage.getItem('tyfrex:kg:myemail');
+  if (savedEmail) document.getElementById('my-email').value = savedEmail;
+} catch(e) {}
+renderHistory();
+</script>
+</body>
+</html>
