@@ -209,13 +209,13 @@ function generateKey() {
     'hello@tyfrex.com'
   ].join('\n');
 
-  document.getElementById('key-display').textContent = cur_key;
-  document.getElementById('m-name').textContent = name;
-  document.getElementById('m-app').textContent = appLabel;
-  document.getElementById('m-issued').textContent = issued;
-  document.getElementById('m-expiry').textContent = expiry + ' (' + days + ' days)';
-  document.getElementById('save-status').textContent = '';
-  
+  var _set = function(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; };
+  _set('key-display', cur_key);
+  _set('m-name', name);
+  _set('m-app', appLabel);
+  _set('m-issued', issued);
+  _set('m-expiry', expiry + ' (' + days + ' days)');
+
   
   document.getElementById('result').style.display = '';
   document.getElementById('result').scrollIntoView({behavior:'smooth'});
