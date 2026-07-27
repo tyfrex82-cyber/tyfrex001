@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tyfrex DPD Desktop v172</title>
+<title>Tyfrex DPD Desktop v174</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -679,10 +679,10 @@ td.amount.gold { color: var(--gold); }
 
     <div style="margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;color:#8B949E;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Company Name</div>
-      <input id="licence-company-input" type="text" placeholder="e.g. Duke Logistics Ltd"
+      <input id="licence-company-input" type="text" placeholder="e.g. ABC Ltd"
         style="width:100%;box-sizing:border-box;padding:13px 16px;background:#21262D;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#E6EDF3;font-size:14px;font-family:DM Sans,sans-serif;outline:none"
         autocomplete="organization">
-      <div style="font-size:11px;color:#8B949E;margin-top:4px">Enter exactly as you told us when you got your key</div>
+      <div style="font-size:11px;color:#8B949E;margin-top:4px">Enter exactly as registered when your key was issued</div>
     </div>
     <div style="font-size:11px;font-weight:700;color:#8B949E;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Licence Key</div>
     <input id="licence-key-input" aria-label="Licence key" type="text" placeholder="TYFREX-DPD-XXXXX-XXXXX"
@@ -1520,8 +1520,9 @@ function activateLicence() {
   if (!company) { setLicenceStatus('Please enter your company name', 'error'); return; }
   if (!key) { setLicenceStatus('Please enter your licence key', 'error'); return; }
 
-  // Store company name immediately for algorithmic validation
-  try { localStorage.setItem(SK.company, company); DATA._company_name = company; } catch(e) {}
+  // Store company name temporarily for algorithmic validation
+  // Will be saved permanently when operator completes setup
+  DATA._pending_company = company;
 
   var btn = document.getElementById('licence-btn');
   if (btn) { btn.textContent = 'Checking…'; btn.disabled = true; }
@@ -1531,7 +1532,7 @@ function activateLicence() {
     if (btn) { btn.textContent = 'Activate Tyfrex'; btn.disabled = false; }
     if (result.valid) {
       saveLicenceStore(key, result.expiry);
-      setLicenceStatus('✅ Activated for ' + (result.operator || 'your account') + ' — expires ' + result.expiry, 'ok');
+      setLicenceStatus('✅ Activated — expires ' + result.expiry, 'ok');
       setTimeout(function() {
         hideLicenceScreen();
         init();
@@ -1647,8 +1648,8 @@ function validateWithServer(key, callback) {
 
   // Algorithmic validation — works offline, no server needed
   // Get company name from localStorage
-  var co = '';
-  try { co = localStorage.getItem(SK.company) || DATA._company_name || ''; } catch(e) {}
+  var co = DATA._pending_company || '';
+  try { if (!co) co = localStorage.getItem(SK.company) || DATA._company_name || ''; } catch(e) {}
   if (co) {
     var algoResult = validateTyfrexKeyAlgo(key, co);
     if (algoResult.valid) {
