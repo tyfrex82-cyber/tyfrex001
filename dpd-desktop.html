@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tyfrex DPD Desktop v175</title>
+<title>Tyfrex DPD Desktop v176</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -6216,7 +6216,6 @@ function generateDesktopPaySlip(d, previewOnly) {
   var info = [
     ['Driver:', d.name||d.id],
     ['Driver ID:', d.id||''],
-    ['Franchise No:', fd],
     ['Tax Year:', taxYear],
     ['Period:', period],
     ['Payment Date:', paymentDate],
@@ -6434,7 +6433,7 @@ function sendAllPayslips() {
     doc.setLineWidth(0.5); doc.setDrawColor(200,200,200); doc.line(mx,y+3,W-mx,y+3); y+=10;
     doc.setFont('helvetica','normal'); doc.setFontSize(14); doc.setTextColor(60,60,60);
     doc.text('SELF-EMPLOYED PAYMENT SUMMARY', W/2, y, {align:'center'}); y+=12;
-    var info = [['Driver:',d.name||d.id],['Driver ID:',d.id||''],['Franchise No:',fd],['Period:',period],['Issued:',issueDate],['Ref:',payRef],['Status:','Independent Contractor']].filter(function(r){return!!r[1];});
+    var info = [['Driver:',d.name||d.id],['Driver ID:',d.id||''],['Period:',period],['Issued:',issueDate],['Ref:',payRef],['Status:','Independent Contractor']].filter(function(r){return!!r[1];});
     var bh = info.length*6+8;
     doc.setFillColor(240,246,252); doc.setDrawColor(180,205,230); doc.setLineWidth(0.3);
     doc.rect(mx,y,cw,bh,'FD'); doc.setFillColor(30,70,150); doc.rect(mx,y,3,bh,'F');
